@@ -1,0 +1,94 @@
+{
+  "providers": {
+    "amazon-bedrock": {
+      "apiKey": "!pi auth print-api-key --provider deepseek",
+      "authHeader": true,
+      "models": [
+        {
+          "id": "global.anthropic.claude-sonnet-5-5",
+          "name": "global.anthropic.claude-sonnet-5-5 (mock: deepseek-flash)",
+          "api": "openai-completions",
+          "baseUrl": "https://api.deepseek.com",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "max": "max"
+          },
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006,
+            "cacheWrite": 0
+          },
+          "contextWindow": 128000,
+          "maxTokens": 16384,
+          "samplingParams": {
+            "model": "deepseek-flash"
+          }
+        },
+        {
+          "id": "global.anthropic.claude-haiku-5-5",
+          "name": "global.anthropic.claude-haiku-5-5 (mock: deepseek-flash)",
+          "api": "openai-completions",
+          "baseUrl": "https://api.deepseek.com",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "max": "max"
+          },
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006,
+            "cacheWrite": 0
+          },
+          "contextWindow": 128000,
+          "maxTokens": 16384,
+          "samplingParams": {
+            "model": "deepseek-flash"
+          }
+        },
+        {
+          "id": "global.anthropic.claude-opus-5-5",
+          "name": "global.anthropic.claude-opus-5-5 (mock: deepseek-flash)",
+          "api": "openai-completions",
+          "baseUrl": "https://api.deepseek.com",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "max": "max"
+          },
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006,
+            "cacheWrite": 0
+          },
+          "contextWindow": 128000,
+          "maxTokens": 16384,
+          "samplingParams": {
+            "model": "deepseek-flash"
+          }
+        }
+      ]
+    }
+  }
+}
