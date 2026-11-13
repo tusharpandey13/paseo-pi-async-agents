@@ -13,7 +13,7 @@ Always confirm first before creating a schedule, a heartbeat, an agent that writ
 ```jsonc
 {
   "title": "Review auth diff",
-  "provider": "pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5",   // from verbs.md
+  "provider": "pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5",   // SKILL.md verb table
   "settings": { "thinkingOptionId": "medium" },
   "initialPrompt": "<brief, same shape as SKILL.md section 5, without the output field>",
   "labels": { "async-agents.verb": "sonnet", "async-agents.run-key": "review-1" },

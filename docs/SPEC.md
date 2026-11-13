@@ -1,6 +1,6 @@
 # Spec: seamless async subagents for pi + Paseo
 
-Status: design only. Nothing in this document is built. Items marked **[verify]** are assumptions that the E2E plan in section 9 must confirm.
+Status: v1 built (see section 12 for what is verified).  Items marked **[verify]** are assumptions that the E2E plan in section 9 must confirm.
 Terms: **awt** is a per-task work-record CLI (notes, decisions, refs, an outbox for anything that leaves the machine). **pcg** is a cost governor extension for pi that adds an `estimate_cost` tool and records usage. **Paseo** is the agent workspace app with an MCP server.
 Scope: pi coding agent with the `pi-subagents` extension, running Claude models on Amazon Bedrock, inside Paseo.
 
@@ -22,7 +22,7 @@ These are fixed for v1.
 | # | Decision | Consequence |
 |---|---|---|
 | D1 | Keep `pi-subagents` as the default delegation engine. | Paseo agents are escalation only. |
-| D2 | Omit `tools` on custom agents so background children get extension tools. | Fall back to an explicit allowlist only if E5 shows the tools are missing. |
+| D2 | Omit `tools` on custom agents so background children get extension tools. Custom agents set `async: true`. | pi-subagents 0.88.1 docs confirm: ambient extensions load only in background children; foreground children never load them, and a foreground launch needing ambient MCP tools fails. Async is therefore required, not a preference. Fall back to an explicit allowlist only if E5 shows the tools are missing. |
 | D3 | Use settings, not ejected copies, to change builtin agents. `subagents.defaultInheritGlobalContext: true` plus `agentOverrides.<name>.tools` / `.inheritGlobalContext`. | `pi-subagents` documents both: `defaultInheritGlobalContext` is a settings key, and `inheritGlobalContext` and `tools` are supported override fields. No eject step. |
 | D4 | Keep the ambient safety extensions on in children (best judgement). | Observed behavior is fail-closed without a UI: `permission-gate` blocks `rm -rf`, `sudo`, `chmod 777` and returns "no UI for confirmation"; `protected-paths` blocks writes to `.env`, `.git/`, `node_modules/`; `dirty-repo-guard` only hooks session switch and fork, and `git-checkpoint` only hooks fork and turn events. A child that needs a blocked action asks the parent with `contact_supervisor`. Tune with `defaultExtensions` / `subagentOnlyExtensions` only if E7 shows a legitimate block. |
 | D5 | pcg records child usage in its history. | The parent summary still reports run-level cost from the run result, and E6 asserts the history line. |
@@ -30,6 +30,8 @@ These are fixed for v1.
 | D7 | Always pass an explicit `model`. Never rely on inheritance. | The parent may be on a different model. |
 | D8 | Verbs map to Sonnet 5.5 (default), Haiku 5.5, Opus 5.5 on the Bedrock `global.` inference profile. | See section 5.1. |
 | D9 | A Paseo plugin is not part of v1. A small optional plugin is a phase-2 candidate. | See section 7. |
+| D10 | Dev and E2E keep the exact Bedrock ids and mock them. `dev/models.mock.json` overrides the three `amazon-bedrock` models to DeepSeek's OpenAI-compatible endpoint with `samplingParams.model: "deepseek-flash"`, merged only into an isolated `PI_CODING_AGENT_DIR` (`install.sh --dev` refuses the default dir). | Every E2E exercises the production id strings, the session records them, and the work is done by `deepseek-flash` at about $0.0001 per tiny call. Virtual models (`registerVirtualModel`) cannot be used: pi rejects them because the ids exist as physical Bedrock models. |
+| D11 | Bind each child's result file with the call's `output` field (absolute path), not with an instruction in the task text. | pi-subagents only routes output through `output`. For read-only children the runtime persists the final response; writers get a direct-write instruction. The child preamble says "your final response is your result". |
 
 ## 3. Findings that shape the design
 
@@ -63,16 +65,19 @@ user phrase / slash prompt
 ```
 
 Components. All are new files in this repo, installed by symlink (section 11).
-- `skills/async-agents/SKILL.md` with `references/verbs.md`, `agents.md`, `awt-pcg-briefing.md`, `paseo.md`, `failures.md`, and `scripts/smoke.md`.
+- `skills/async-agents/SKILL.md` (which holds the verb table) with `references/agents.md`, `preamble.txt`, `paseo.md` and `failures.md`. The awt/pcg briefing is short enough to live in SKILL.md section 6.
 - `prompts/{sonnet,haiku,opus}.md`: a slash command is explicit authorization plus an explicit verb.
 - `agents/{general,general-ro}.md`.
 - `settings.fragment.json`: the `subagents` block to merge into `~/.pi/agent/settings.json`.
 - `agents-md.fragment.md`: a one-line pointer for `~/.pi/agent/AGENTS.md`.
-- `install.sh`: idempotent symlinks and a settings merge with a backup. Dry run by default.
+- `install.sh`: idempotent symlinks into `<agent-dir>/{skills,prompts,agents}`, a settings merge with a backup, and an `AGENTS.md` pointer. Dry run by default; `--apply`, `--agent-dir`, `--dev`.
+- `dev/models.mock.json` (D10) and `e2e/{setup.sh,run.sh,fixtures/}`: the isolated E2E environment.
 
 ## 5. Dev spec
 
-### 5.1 Verb table (single source of truth: `references/verbs.md`)
+### 5.1 Verb table (single source of truth: the table in `SKILL.md`)
+
+E1 showed that a parent which only had a pointer to a separate verbs file passed the bare verb (`model: "sonnet"`), was rejected, and recovered through `models`. The table is therefore inlined in SKILL.md.
 
 | Verb | Model id |
 |---|---|
@@ -108,16 +113,17 @@ Resolution order:
     "defaultInheritGlobalContext": true,
     "agentOverrides": {
       // builtin roles keep their prompts; they gain pcg's tool and the global context
-      "scout":      { "tools": ["<builtin allowlist>", "estimate_cost"] },
-      "reviewer":   { "tools": ["<builtin allowlist>", "estimate_cost"] },
-      "worker":     { "tools": ["<builtin allowlist>", "estimate_cost"] },
-      "oracle":     { "tools": ["<builtin allowlist>", "estimate_cost"] },
-      "researcher": { "tools": ["<builtin allowlist>", "estimate_cost", "web_search", "fetch_content", "get_search_content"] }
+      "scout":      { "tools": ["read","grep","find","ls","bash","write","contact_supervisor","estimate_cost"] },
+      "reviewer":   { "tools": ["read","grep","find","ls","watchdog_diff","contact_supervisor","estimate_cost"] },
+      "worker":     { "tools": ["read","grep","find","ls","bash","edit","write","contact_supervisor","estimate_cost"] },
+      "oracle":     { "tools": ["read","grep","find","ls","bash","estimate_cost"] },
+      "researcher": { "tools": ["read","write","web_search","fetch_content","get_search_content","source_check","estimate_cost"] }
     }
   }
 }
 ```
-- The real allowlists are read from `subagent({action:"get", agent:"<name>"})` at build time and extended. The placeholder above is not literal.
+- The allowlists are the builtin frontmatter of pi-subagents 0.88.1 plus `estimate_cost`. `tools` overrides replace the list, so E19 re-diffs them after each upgrade. `tools: "inherit"` was rejected: it gives read-only roles `edit`/`write` and drops `watchdog_diff`.
+- `estimate_cost` resolves only where pcg loads, which is in background children. A foreground launch of a patched builtin is covered by E20.
 - `defaultModel` is a fallback only. The skill still passes `model` explicitly (D7).
 - `defaultInheritGlobalContext: true` applies to every builtin, package, user and project agent. An agent that sets `inheritGlobalContext: false` still opts out. It only has effect for agents with `inheritProjectContext: true`, which every builtin has.
 - Nesting stays off: `allowNestedSubagents` is not set, so children never spawn children.
@@ -139,18 +145,18 @@ inheritGlobalContext: true
 inheritSkills: true
 # tools omitted: builtins plus ambient extension tools in background children (D2) [verify]
 thinking: medium
-acceptanceRole: writer
 ---
 <child preamble: section 5.5>
 ```
-`agents/general-ro.md`: same, plus `excludeTools: edit, write` and `acceptanceRole: read-only`. `bash` can still mutate, so the preamble forbids mutation.
+`acceptanceRole` is omitted on `general`. With `writer`, E1's no-file task inferred a checked acceptance that required changed-files evidence and a reviewer, and was marked `rejected`. The skill passes `gate` or `acceptance` explicitly for code edits instead.
+`agents/general-ro.md`: same, plus `excludeTools: edit, write` and `acceptanceRole: read-only`. The skill uses it for every task that changes no files. `bash` can still mutate, so the preamble forbids mutation.
 Fallback if E5 shows omitted `tools` hides extension tools: an explicit allowlist `read, grep, find, ls, bash, edit, write, contact_supervisor, estimate_cost, web_search, fetch_content, get_search_content, mcp, mcp:slack, mcp:paseo`.
 
 ### 5.5 Child preamble (identical in every custom agent; appended to briefs for builtin agents)
 
 ```
 You are a subagent of $AWT_BY. Do not run `awt resume`, `awt state`, `awt status`, or `awt effect apply`.
-Write your final result to $AWT_DIR/docs/<RUN_KEY>.out.md (RUN_KEY is in your brief). Never write $AWT_DIR/out.md or anything under .awt/.
+Your final response is your result; the runtime saves it to $AWT_DIR/docs/<RUN_KEY>.out.md (RUN_KEY is in your brief), so make it complete. Never write $AWT_DIR/out.md or anything under .awt/.
 If you record anything, use `awt note --by sub:<RUN_KEY> "..."`. Anything that leaves this machine goes through `awt effect plan` only; a person approves it.
 Before a task that will use tools, call estimate_cost. Follow the global rules you inherited (signed commits, absolute paths, account selection).
 If a gate blocks a needed action, do not work around it. Call contact_supervisor with reason need_decision.
@@ -159,7 +165,7 @@ The skill injects a stable `RUN_KEY` (for example `scan-1`) into each brief and 
 
 ### 5.6 Briefs (generated by the skill)
 
-A brief contains: goal, repo, explicit `cwd` and ref, edit boundary, files and evidence, success criteria, validation, the output path `$AWT_DIR/docs/<RUN_KEY>.out.md`, when to stop and ask, and the awt `rule` decisions that apply (`awt list decisions --tag rule`).
+A brief contains: goal, repo, explicit `cwd` and ref, edit boundary, files and evidence, success criteria, validation, the output path `$AWT_DIR/docs/<RUN_KEY>.out.md` (passed as the absolute `output` field, D11), when to stop and ask, and the awt `rule` decisions that apply (`awt list decisions --tag rule`).
 Parallel briefs differ by seam, never by an index number.
 
 ### 5.7 Parent-side awt and pcg behavior
@@ -290,7 +296,8 @@ Recommendation: build nothing now. After E17 shows how often agents are created 
 
 ## 9. E2E plan
 
-Cheap first: Haiku children and tiny tasks. Evidence sources: `subagent({action:"status"})`, the child `session.jsonl`, `$AWT_DIR/docs`, `awt doctor`, and the pcg history file.
+Environment (D10): `e2e/setup.sh` builds `/tmp/ppaa-e2e/agent` (pi-subagents 0.88.1, pcg, this repo installed with `--dev`, fixture `AGENTS.md` carrying the canary rule "commits must be signed, `-S`") and a scratch awt node `/tmp/ppaa-e2e/awt-node`. `e2e/run.sh <ID> "<prompt>"` runs one headless parent turn on the mocked Sonnet id. All verbs route to `deepseek-flash`, so E2/E3 check the requested id, not model behavior. E17 needs Paseo to launch pi against the real agent dir, so it runs on the Bedrock machine only.
+Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the child `session.jsonl`, `$AWT_DIR/docs`, `awt doctor`, and the pcg history file.
 
 | ID | Scenario | Pass criteria |
 |---|---|---|
@@ -312,20 +319,21 @@ Cheap first: Haiku children and tiny tasks. Evidence sources: `subagent({action:
 | E16 | Nested spawn attempt by a child | Denied. |
 | E17 | Paseo escalation (U9) | Asks first. Creates workspace and agent with `provider: "pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5"`. `paseo_get_agent` reports that model. awt node nested under the parent. No schedule without consent. Decides D6. |
 | E18 | Slash prompts `/haiku`, `/sonnet`, `/opus` | Authorized without extra phrasing; model matches. |
-| E19 | Regression after a `pi-subagents` upgrade | Rerun E1, E5, E7, E9. |
+| E19 | Regression after a `pi-subagents` upgrade | Rerun E1, E5, E7, E9, and diff builtin allowlists against `settings.fragment.json`. |
+| E20 | Foreground launch of a patched builtin (`scout`, `async:false`) | Either works without `estimate_cost` or fails with a clear message; record which in `failures.md`. |
 
 Unit-level checks with no model calls: `subagent({action:"validate"})` on any shipped workflow file; agent frontmatter parses (`subagent({action:"list"})` shows `general` and `general-ro`); `settings.json` is valid JSON after the merge; `subagent({action:"models"})` lists all three verb ids; `install.sh` dry run prints the planned links and a settings diff.
 
 ## 10. Risks and open questions
 
 1. D2 is a decision, but the mechanism is **[verify]** in E5. The fallback allowlist is specified in 5.4.
-2. Builtin `tools` overrides replace the list. The build step must read each builtin's current allowlist first, or a child loses a tool it relies on.
+2. Builtin `tools` overrides replace the list. The lists are pinned to 0.88.1; an upgrade that adds a builtin tool is lost until E19 re-diffs them.
 3. D4 is a judgment call. If E7 shows `permission-gate` blocking legitimate cleanup (`rm -rf` of a temp dir), the child must ask the parent. That is acceptable friction and keeps the fail-closed property.
 4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. It is mitigated by per-run output paths and `--by`. The clean fix is upstream: give each child its own sub-node, in the same way the awt Paseo plugin does for Paseo agents.
 5. Sonnet for everything ignores cost tiers. Auto-suggesting Haiku for pure recon is off by default because the requirement is "auto Sonnet".
 6. `thinking: medium` on `general` can be too low for review work. The caller can pass a `:high` suffix per run.
 7. Paseo model pin (6.2) is derived from schema and listing, not yet exercised.
-8. Verb ids will drift as new models ship. `references/verbs.md` is the only place to update, and E19 catches stale ids.
+8. Verb ids will drift as new models ship. The SKILL.md table is the only place to update, and E19 catches stale ids.
 
 ## 11. Rollout and repository layout
 
@@ -338,7 +346,9 @@ paseo-pi-async-agents/
   agents/{general,general-ro}.md
   settings.fragment.json
   agents-md.fragment.md
-  install.sh                        symlinks into ~/.agents/skills, ~/.pi/agent/{prompts,agents}; merges settings; --apply to write
+  dev/models.mock.json              Bedrock ids -> deepseek-flash, isolated agent dir only (D10)
+  e2e/{setup.sh,run.sh,fixtures/}   isolated E2E environment
+  install.sh                        symlinks into <agent-dir>/{skills,prompts,agents}; merges settings; AGENTS.md pointer; --apply to write
 ```
 1. Agents, settings fragment and preamble. Run E1, E5, E6, E7, E9 to settle D2 to D5.
 2. Skill, references and prompt templates. Run E1 to E4, E10 to E13, E18.

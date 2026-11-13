@@ -2,7 +2,7 @@
 
 | Symptom | Fix |
 |---|---|
-| `Unknown subagent model` | Use the id from verbs.md exactly, else `subagent({action:"models"})`. |
+| `Unknown subagent model` | Use the full id from the SKILL.md verb table (never the bare verb), else `subagent({action:"models"})`. |
 | `on-demand throughput isn't supported` | The id lacks the `global.` or `us.` prefix. |
 | Extension or MCP tool missing in a child | Launch with `async:true`; foreground children never load ambient extensions. Use `general`. For a builtin, add the tool to `agentOverrides.<name>.tools`. |
 | Foreground launch fails asking for `async: true` | The agent needs ambient MCP tools. Relaunch async. |

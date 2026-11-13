@@ -16,7 +16,15 @@ Not triggers: a model name alone ("what is Sonnet's context window?"), task size
 
 ## 2. Model per child
 
-Use the table in [references/verbs.md](references/verbs.md). Always pass `model` explicitly. Never rely on inheritance.
+Always pass `model` as the **full id** from this table, never the bare verb. Never rely on inheritance.
+
+| Verb | `model` | Paseo `provider` |
+|---|---|---|
+| sonnet (default) | `amazon-bedrock/global.anthropic.claude-sonnet-5-5` | `pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5` |
+| haiku | `amazon-bedrock/global.anthropic.claude-haiku-5-5` | `pi/amazon-bedrock/global.anthropic.claude-haiku-5-5` |
+| opus | `amazon-bedrock/global.anthropic.claude-opus-5-5` | `pi/amazon-bedrock/global.anthropic.claude-opus-5-5` |
+
+This table is the only copy of the mapping; update it when models ship. Bedrock ids need the `global.` (or `us.`) prefix. Cost tier: haiku < sonnet < opus. Synonyms such as "cheap" or "best" are not mapped.
 
 Resolve in this order:
 1. An exact `provider/id` the user typed: pass it through unchanged.
@@ -31,7 +39,7 @@ Resolve in this order:
 
 ## 3. Agent
 
-- Default `general`. Use `general-ro` when the task is read-only (research, review, recon, summarize).
+- Use `general-ro` for anything that changes no files (research, review, recon, summarize, answer). Use `general` only when the child edits files.
 - Use builtin roles (`scout`, `reviewer`, `worker`, `oracle`, `researcher`) when the user names one or the shape calls for it. Append the preamble from [references/preamble.txt](references/preamble.txt) to their brief.
 - Agents that need extension or MCP tools (mcp, slack, web, paseo, `estimate_cost`) work only as **async** children. Ambient extensions do not load in foreground children.
 
@@ -40,7 +48,7 @@ Resolve in this order:
 - One task: a single child.
 - N independent tasks: `workflow:"parallel"`. Make the briefs differ by seam (file, area, question), never by an index number.
 - Dependent steps: a scripted workflow (`subagent({action:"guide"})`, topic workflows).
-- Code edits: one writer per cwd. Use `worktree:true` when writers run in parallel or the repo is dirty. Review or gate before accepting.
+- Code edits: one writer per cwd. Use `worktree:true` when writers run in parallel or the repo is dirty. Pass a gate: `options.gate: "<test command>"` for one command, or `options.acceptance: {level:"checked", evidence:["changed-files","commands-run"], review:{required:true}}`. In a workflow `runs.run` item, `acceptance` is a plain field.
 - Always `async:true`, then **yield**. Do not sleep, poll or call `bg_wait`. The completion notice wakes you.
 
 ## 5. Brief (one per child)

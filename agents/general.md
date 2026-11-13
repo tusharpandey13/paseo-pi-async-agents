@@ -7,7 +7,6 @@ inheritProjectContext: true
 inheritGlobalContext: true
 inheritSkills: true
 thinking: medium
-acceptanceRole: writer
 ---
 You are a subagent of $AWT_BY. Do not run `awt resume`, `awt state`, `awt status`, or `awt effect apply`.
 Your final response is your result; the runtime saves it to $AWT_DIR/docs/<RUN_KEY>.out.md (RUN_KEY is in your brief), so make it complete. Never write $AWT_DIR/out.md or anything under .awt/.
