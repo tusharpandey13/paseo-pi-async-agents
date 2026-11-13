@@ -31,7 +31,8 @@ These are fixed for v1.
 | D8 | Verbs map to Sonnet 5.5 (default), Haiku 5.5, Opus 5.5 on the Bedrock `global.` inference profile. | See section 5.1. |
 | D9 | A Paseo plugin is not part of v1. A small optional plugin is a phase-2 candidate. | See section 7. |
 | D10 | Dev and E2E keep the exact Bedrock ids and mock them. `dev/models.mock.json` overrides the three `amazon-bedrock` models to DeepSeek's OpenAI-compatible endpoint with `samplingParams.model: "deepseek-flash"`, merged only into an isolated `PI_CODING_AGENT_DIR` (`install.sh --dev` refuses the default dir). | Every E2E exercises the production id strings, the session records them, and the work is done by `deepseek-flash` at about $0.0001 per tiny call. Virtual models (`registerVirtualModel`) cannot be used: pi rejects them because the ids exist as physical Bedrock models. |
-| D11 | Bind each child's result file with the call's `output` field (absolute path), not with an instruction in the task text. | pi-subagents only routes output through `output`. For read-only children the runtime persists the final response; writers get a direct-write instruction. The child preamble says "your final response is your result". |
+| D11 | Bind each child's result file with the call's `output` field (absolute path), not with an instruction in the task text. | pi-subagents only routes output through `output`. Agents with omitted `tools` (both custom agents) count as write-capable, so the runtime tells them to write the path. The preamble therefore says to write the complete result there once, at the end, and `general-ro`'s read-only rule makes that file its one exception. N independent children use a `runs.all` script, because `workflow:"parallel"` rejects `output` and generates its own keys. Without `$AWT_DIR`, output goes to `/tmp/async-agents/docs` and the awt steps are skipped. |
+| D12 | Children never delegate. The skill, the AGENTS.md pointer and the preamble all say so. | Children inherit the global AGENTS.md and skills, and have ambient `mcp:paseo`. Without the guard, a brief that repeats "parallelize" could make a child create Paseo agents with no human to confirm, which is nesting that E16 does not catch. |
 
 ## 3. Findings that shape the design
 
@@ -86,7 +87,7 @@ E1 showed that a parent which only had a pointer to a separate verbs file passed
 | opus | `amazon-bedrock/global.anthropic.claude-opus-5-5` |
 
 - The skill always passes `model` explicitly.
-- Optional thinking suffix `:minimal|low|medium|high|xhigh` is appended only when the user says so ("opus, think hard" gives `:high`). Otherwise the agent's own `thinking` applies.
+- Optional thinking suffix `:off|minimal|low|medium|high|xhigh` is appended only when the user says so ("opus, think hard" gives `:high`). Otherwise the agent's own `thinking` applies.
 - A user-supplied exact `provider/id` is passed through unchanged.
 - Any other model word (for example "gpt", "kimi", "nova"): run `subagent({action:"models"})`, choose the exact id, and tell the user which one was chosen.
 - Synonyms such as "cheap" or "best" are not mapped. Add them only on request.
@@ -101,7 +102,7 @@ Resolution order:
 2. Model per child: explicit exact id, then per-role verb ("haiku for scouting, opus for review"), then message-wide verb, then default Sonnet.
 3. Ambiguous mapping (for example "use haiku and opus" with no roles): ask one question. Do not guess.
 4. Agent: default `general`, or `general-ro` when the task is read-only (research, review, recon). Use builtin roles (`scout`, `reviewer`, `worker`, `oracle`, `researcher`) when the user names one or the shape calls for it.
-5. Shape: one task is a single child. N independent tasks use `workflow:"parallel"`. Dependent steps use a scripted workflow. Code edits use a single writer per cwd, or `worktree:true`.
+5. Shape: one task is a single child. N independent tasks use a `runs.all` workflow script with per-child `key` and `output` (D11). Dependent steps use a scripted workflow. Code edits use a single writer per cwd. Parallel writers use `worktree:true`, which needs a clean checkout; a dirty repo means one writer in the shared cwd, or asking the user to commit or stash.
 6. Always `async:true`, then yield. No sleeping, no polling, no `bg_wait` for native async runs.
 
 ### 5.3 Settings (`settings.fragment.json`)
@@ -275,18 +276,18 @@ Recommendation: build nothing now. After E17 shows how often agents are created 
 | ID | User says | Expected |
 |---|---|---|
 | U1 | "do this in a subagent: summarize README" | `general-ro`, Sonnet, async, yield. Result summarized on wake. |
-| U2 | "parallelize: review these 3 files" | `workflow:"parallel"`, 3 children on Sonnet, one per file, aggregated reply. |
+| U2 | "parallelize: review these 3 files" | `runs.all` script, 3 children on Sonnet, one per file, distinct keys and output files, aggregated reply. |
 | U3 | "delegate the lint fix to haiku" | `general` writer (or `worker`), Haiku explicit. |
 | U4 | "/opus review this diff" | Slash is authorization plus Opus. `reviewer` or `general-ro`, read-only. |
 | U5 | "haiku scouts, opus reviewer" | Per-role models: scout Haiku, reviewer Opus. |
 | U6 | "use haiku and opus" (no roles) | One clarifying question. |
 | U7 | "what's the difference between sonnet and haiku?" | No launch. |
-| U8 | "fan out 4 agents to search slack for X" | `general` x4 with the slack tool, all Sonnet. |
+| U8 | "fan out 4 agents to search slack for X" | `general-ro` x4 (no file changes) with the slack tool, all Sonnet. |
 | U9 | "run this in the background after we close the chat, in its own worktree" | Paseo escalation: confirm, then create workspace and agent. |
 | U10 | "every weekday 9am check CI" | Paseo schedule, after confirmation. |
 | U11 | "stop that agent" / "tell it to also check tests" | `stop` / `steer` by run id. |
-| U12 | "continue the previous child's work" | `resume` on the latest run id. |
-| U13 | "do the migration in a subagent" (writes code) | Single writer. `worktree:true` if the repo is dirty or writers are parallel. Gate or review before accept. |
+| U12 | "continue the previous child's work" | `resume` on the latest run id with a fresh RUN_KEY `output`, so the new report doesn't land under another name. |
+| U13 | "do the migration in a subagent" (writes code) | Single writer in the cwd. `worktree:true` only for parallel writers on a clean tree, with the patch applied or the branch committed. A gate (`gate` or `acceptance`), plus a separate `reviewer` run when a review is wanted. |
 
 ### 8.2 Agent journeys
 
@@ -319,7 +320,7 @@ Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the ch
 | E13 | Forced launch failure (invalid id) | Stop, report with closest ids, no retry (validation error), no other CLI. |
 | E14 | `steer` and `stop` a long child | State transitions observed; `resume` returns a new run id. |
 | E15 | Writer in a scratch git repo with `worktree:true` | Child edits in the worktree; main tree untouched; the edit is recoverable (commit on the branch or saved patch). |
-| E16 | Nested spawn attempt by a child | Denied. |
+| E16 | Nested spawn attempt by a child | Denied: there is no `subagent` tool, and the child refuses Paseo creation (D12). |
 | E17 | Paseo escalation (U9) | Asks first. Creates workspace and agent with `provider: "pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5"`. `paseo_get_agent` reports that model. awt node nested under the parent. No schedule without consent. Decides D6. |
 | E18 | Slash prompts `/haiku`, `/sonnet`, `/opus` | Authorized without extra phrasing; model matches. |
 | E19 | Regression after a `pi-subagents` upgrade | Rerun E1, E5, E7, E9, and diff builtin allowlists against `settings.fragment.json`. |

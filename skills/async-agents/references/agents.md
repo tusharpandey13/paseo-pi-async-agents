@@ -1,27 +1,31 @@
 # Call shapes
 
-The details live in the `pi-subagents` skill and in `subagent({action:"guide", options:{topic:"<section>"}})`. This page only lists the shape for each feature. Every launch passes `model` and an absolute `output`.
+The details live in the `pi-subagents` skill and in `subagent({action:"guide", options:{topic:"<section>"}})`. This page only lists the shape for each feature. Every launch passes `model` and an absolute `output`. `<OUT>` is the output dir from SKILL.md section 5. Workflow scripts are statement bodies: no arrow functions, methods or nested async functions.
 
 ## Launch
 
 ```typescript
 // single child (U1, U3)
 subagent({ agent: "general-ro", model: "<verb id>", async: true,
-  task: "<brief>", output: "<AWT_DIR>/docs/readme-1.out.md" })
+  task: "<brief>", output: "<OUT>/readme-1.out.md" })
 
-// N independent children (U2, U8)
-subagent({ workflow: "parallel", async: true, args: { tasks: [
-  { agent: "general-ro", model: "<id>", task: "<brief: file a>", output: "<AWT_DIR>/docs/a-1.out.md" },
-  { agent: "general-ro", model: "<id>", task: "<brief: file b>", output: "<AWT_DIR>/docs/b-1.out.md" },
-] } })
-
-// per-role models (U5): a scripted workflow with stable keys
+// N independent children (U2, U8) and per-role models (U5): a workflow script,
+// written in the reply, launched with subagent({ workflow: true, async: true }) in the same reply.
+// Not workflow:"parallel": its tasks accept only agent, task, cwd, model (no output, no key).
 ```
 ```js workflow
+const results = await runs.all([
+  { key: "a-1", label: "Review file a", agent: "general-ro", model: "<id>", task: "<brief: file a>", output: "<OUT>/a-1.out.md" },
+  { key: "b-1", label: "Review file b", agent: "general-ro", model: "<id>", task: "<brief: file b>", output: "<OUT>/b-1.out.md" },
+]);
+return results;
+```
+Dependent steps:
+```js workflow
 const scan = await runs.run("scan-1", { label: "Map auth flow", agent: "scout",
-  model: "amazon-bedrock/global.anthropic.claude-haiku-5-5", task: "...", output: "<AWT_DIR>/docs/scan-1.out.md" });
+  model: "amazon-bedrock/global.anthropic.claude-haiku-5-5", task: "...", output: "<OUT>/scan-1.out.md" });
 const review = await runs.run("review-1", { label: "Review auth", agent: "reviewer",
-  model: "amazon-bedrock/global.anthropic.claude-opus-5-5", task: "... " + scan.output, output: "<AWT_DIR>/docs/review-1.out.md" });
+  model: "amazon-bedrock/global.anthropic.claude-opus-5-5", task: "... " + scan.output, output: "<OUT>/review-1.out.md" });
 return [scan.outputReference, review.outputReference];
 ```
 Validate a script file before launch with `subagent({action:"validate", workflow:"./x.js"})`.
@@ -34,7 +38,7 @@ Validate a script file before launch with `subagent({action:"validate", workflow
 | steer a live child | `subagent({action:"steer", id, message})` |
 | pause the current turn | `subagent({action:"interrupt", id})` |
 | stop (not resumable) | `subagent({action:"stop", id})` |
-| continue a finished child | `subagent({action:"resume", id, message})`. This returns a new run id; always resume the latest one. |
+| continue a finished child | `subagent({action:"resume", id, message, output:"<OUT>/<seam>-<n+1>.out.md"})`. Pass a fresh RUN_KEY's `output`, because without it the new report lands beside the old one under another name. This returns a new run id; always resume the latest one. |
 | list agents / models | `subagent({action:"list"})`, `subagent({action:"models"})` |
 | setup check | `subagent({action:"doctor"})` |
 
@@ -43,7 +47,7 @@ Validate a script file before launch with `subagent({action:"validate", workflow
 | Feature | Where |
 |---|---|
 | `context: "fork"` (child sees parent history) | guide `tool-reference/fork-context-details` |
-| `worktree: true` (parallel writers, dirty repo; needs a clean checkout) | guide `workflows/worktree-isolation` |
+| `worktree: true` (parallel writers; needs a clean checkout; edits come back as a patch in `artifactPaths` unless committed) | guide `workflows/worktree-isolation` |
 | acceptance gates, `output`, `outputMode:"file-only"` | guide `tool-reference/acceptance-gates`, `tool-reference/output-mode-details` |
 | `runs.lanes`, rolling fanout, host-command steps | guide `workflows/scripted-workflows` |
 | missions and schedules | guide `missions/missions`, `missions/schedules` |

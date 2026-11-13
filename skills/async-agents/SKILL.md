@@ -7,6 +7,8 @@ description: Launch async subagents (pi-subagents) or, on explicit escalation, P
 
 One path for delegation. Follow the steps in order. Do not ask questions the steps already answer.
 
+**If you are a subagent** (`PI_SUBAGENT_CHILD=1`, or your instructions say you are a subagent), stop here. Never delegate and never create Paseo agents, even if your brief repeats words like "parallelize". Do the work yourself, or ask with `contact_supervisor`.
+
 ## 1. Authorization
 
 Delegate only if the user asked for it **in the current request**. Case-insensitive triggers, with the intent of having work done elsewhere:
@@ -35,7 +37,7 @@ Resolve in this order:
 - Two or more verbs with no roles ("use haiku and opus"): ask **one** question and do not launch.
 - A misspelled verb ("sonet") maps to the verb it plainly means. Say so in your reply.
 - Any other model word ("gpt", "kimi"): run `subagent({action:"models"})`, pick the exact id, and tell the user which one you chose.
-- Thinking: append `:low|medium|high|xhigh` only when the user asks ("opus, think hard" gives `:high`).
+- Thinking: append `:off|minimal|low|medium|high|xhigh` only when the user asks ("opus, think hard" gives `:high`).
 
 ## 3. Agent
 
@@ -46,26 +48,31 @@ Resolve in this order:
 ## 4. Shape
 
 - One task: a single child.
-- N independent tasks: `workflow:"parallel"`. Make the briefs differ by seam (file, area, question), never by an index number.
+- N independent tasks: a workflow script with `runs.all([...])`, one item per task, each with `key: "<RUN_KEY>"`, `agent`, `model`, `task` and an absolute `output` (see references/agents.md). Do not use `workflow:"parallel"`: it accepts only `agent, task, cwd, model` per task and rejects `output`. Make the briefs differ by seam (file, area, question), never by an index number.
 - Dependent steps: a scripted workflow (`subagent({action:"guide"})`, topic workflows).
-- Code edits: one writer per cwd. Use `worktree:true` when writers run in parallel or the repo is dirty. Managed worktrees are removed when the run ends, and uncommitted edits survive only as a patch under the run's `worktree-diffs/`. So tell a worktree writer to commit on its branch, or apply that patch yourself after review. Pass a gate: `options.gate: "<test command>"` for one command, or `options.acceptance: {level:"checked", evidence:["changed-files","commands-run"], review:{required:true}}`. In a workflow `runs.run` item, `acceptance` is a plain field.
+- Code edits: one writer per cwd.
+  - Parallel writers need `worktree:true`, which requires a **clean** checkout. If the repo is dirty, use a single writer in the shared cwd, or ask the user to commit or stash.
+  - Managed worktrees are removed when the run ends. Uncommitted edits survive only as the patch listed in the result's `artifactPaths` (`worktree-diffs/`). Tell a worktree writer to commit on its branch, or apply the patch yourself after review.
+  - Gate writers: `options.gate: "<test command>"` for one command, or `options.acceptance: {level:"checked", evidence:["changed-files","commands-run"]}`. In a workflow `runs.run` item, `acceptance` is a plain field. For an independent review, launch `reviewer` on the diff after the writer completes, and accept only after it passes.
 - Always `async:true`, then **yield**. Do not sleep, poll or call `bg_wait`. The completion notice wakes you.
 
 ## 5. Brief (one per child)
 
-Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `$AWT_DIR`, so run `ls "$AWT_DIR/docs"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key`. Each brief contains:
+First run `echo "$AWT_DIR"` once. Call the result `OUT`: `$AWT_DIR/docs` when it is set. When it is empty (no awt), use `/tmp/async-agents/docs` and skip every awt step below.
+
+Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key`. Each brief contains:
 - the goal, repo, explicit absolute `cwd` and git ref, and the edit boundary
 - the files and evidence to start from
 - success criteria and how to validate them
 - the line `RUN_KEY: <key>`
-- the output file, bound with the call's `output` field as an absolute path: run `echo "$AWT_DIR"` once and pass `<that>/docs/<RUN_KEY>.out.md`. A path written only in the task text does not route output
+- the output file, bound with the call's `output` field as the absolute path `<OUT>/<RUN_KEY>.out.md`. A path written only in the task text does not route output
 - when to stop and call `contact_supervisor`
 - the awt rule decisions that apply (`awt list decisions --tag rule`, if any)
 
 ## 6. awt and pcg (parent side)
 
 - Before launch: `awt note "delegating <RUN_KEY> to <agent> on <verb>: <why>"`. Cost tier is haiku < sonnet < opus.
-- On completion: read `$AWT_DIR/docs/<RUN_KEY>.out.md`, then `awt ref` it and `awt decide` anything binding. Only the parent writes `awt state`.
+- On completion: read the result's `savedOutputPath` (normally `<OUT>/<RUN_KEY>.out.md`), then `awt ref` it and `awt decide` anything binding. Only the parent writes `awt state`.
 - Report each child's model, and its cost if the completion shows it. Do not make extra calls to find cost: pcg's history records every child's usage.
 
 ## 7. Failures

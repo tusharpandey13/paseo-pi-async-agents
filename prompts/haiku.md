@@ -1,4 +1,4 @@
 ---
-description: Delegate to an async subagent on Haiku
+description: Delegate to an async subagent on Haiku (wrap exact strings in double quotes)
 ---
-Load the `async-agents` skill. The user explicitly asks to delegate and to use model verb `haiku`. Task: $@
+Load the `async-agents` skill. The user explicitly asks to delegate and to use model verb `haiku`. Task (pi drops quotes and line breaks from slash arguments, so read it for intent and ask if an exact string matters): $@

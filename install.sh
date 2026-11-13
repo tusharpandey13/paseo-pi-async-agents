@@ -15,8 +15,9 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --apply) APPLY=1 ;;
     --dev) DEV=1 ;;
-    --agent-dir) AD="$2"; shift ;;
-    --pcg) PCG="$2"; shift ;;
+    --agent-dir|--pcg)
+      [ $# -ge 2 ] || { echo "$1 needs a value" >&2; exit 2; }
+      if [ "$1" = --pcg ]; then PCG="$2"; else AD="$2"; fi; shift ;;
     -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
@@ -33,6 +34,7 @@ link() { # src dst
   local src="$1" dst="$2"
   if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then echo "ok      $dst"; return; fi
   if [ -e "$dst" ] && [ ! -L "$dst" ]; then echo "SKIP    $dst exists and is not a symlink" >&2; return; fi
+  if [ -L "$dst" ]; then echo "SKIP    $dst links to $(readlink "$dst"); remove it to install" >&2; return; fi
   say "link    $dst -> $src"
   if [ "$APPLY" = 1 ]; then mkdir -p "$(dirname "$dst")"; ln -sfn "$src" "$dst"; fi
 }
@@ -51,7 +53,7 @@ fi
 
 # JSON merges: settings.json <- settings.fragment.json ; (dev) models.json <- dev/models.mock.json
 python3 -I - "$APPLY" "$AD" "$REPO" "$DEV" "$PCG" <<'PY'
-import json, sys, os, time, difflib
+import json, sys, os, time, difflib, shutil
 apply, ad, repo, dev, pcg = sys.argv[1] == "1", sys.argv[2], sys.argv[3], sys.argv[4] == "1", sys.argv[5]
 
 def find_pcg(settings):
@@ -116,10 +118,11 @@ def do(path, frag_path, fn, prep=None):
     print(("merge   " if apply else "[dry-run] merge   ") + path)
     sys.stdout.writelines(l + "\n" for l in difflib.unified_diff(a, b, "before", "after", lineterm="", n=1))
     if apply:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        if os.path.exists(path):
-            os.replace(path, f"{path}.bak.{time.strftime('%Y%m%d%H%M%S')}")
-        with open(path, "w") as f: json.dump(new, f, indent=2); f.write("\n")
+        real = os.path.realpath(path)  # write through a dotfiles symlink instead of replacing it
+        os.makedirs(os.path.dirname(real), exist_ok=True)
+        if os.path.exists(real):
+            shutil.copy2(real, f"{real}.bak.{time.strftime('%Y%m%d%H%M%S')}")
+        with open(real, "w") as f: json.dump(new, f, indent=2); f.write("\n")
 
 do(os.path.join(ad, "settings.json"), os.path.join(repo, "settings.fragment.json"), merge, resolve_fragment)
 if dev:

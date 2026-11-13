@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run E2E cases concurrently.  e2e/cases.sh E2 E4 ...   (no args: all listed below)
 cd "$(dirname "$0")"
+ROOT="${E2E_ROOT:-/tmp/ppaa-e2e}"; mkdir -p "$ROOT/logs" "$ROOT/work"
 declare -A P=(
  [E2]="using haiku, do this in a subagent: reply with exactly 'haiku ok'"
  [E3]="delegate: haiku scouts /tmp/ppaa-e2e/work/notes.txt and reports its line count, opus reviews that the count is plausible. Two children."
@@ -22,6 +23,6 @@ declare -A P=(
  [E20]="do this in a subagent with the builtin scout agent in the foreground (async false): count the lines of /tmp/ppaa-e2e/work/notes.txt and call estimate_cost first."
 )
 ids=("$@"); [ ${#ids[@]} -eq 0 ] && ids=(E2 E3 E4 E5 E9 E10 E11 E12 E18)
-printf 'line one\nline two\nline three\n' > /tmp/ppaa-e2e/work/notes.txt
-for id in "${ids[@]}"; do E2E_TAIL=12 ./run.sh "$id" "${P[$id]}" > "/tmp/ppaa-e2e/logs/$id.summary" 2>&1 & done
-wait; for id in "${ids[@]}"; do echo "===== $id"; cat "/tmp/ppaa-e2e/logs/$id.summary"; done
+printf 'line one\nline two\nline three\n' > "$ROOT/work/notes.txt"
+for id in "${ids[@]}"; do E2E_TAIL=12 ./run.sh "$id" "${P[$id]}" > "$ROOT/logs/$id.summary" 2>&1 & done
+wait; for id in "${ids[@]}"; do echo "===== $id"; cat "$ROOT/logs/$id.summary"; done

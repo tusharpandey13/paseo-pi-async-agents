@@ -5,7 +5,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT="${E2E_ROOT:-/tmp/ppaa-e2e}" AD="$ROOT/agent" NODE="$ROOT/awt-node"
 PCG="${PCG:-$HOME/src/wt/pi-governor}"
-mkdir -p "$AD" "$NODE" "$ROOT/work"
+mkdir -p "$AD" "$NODE" "$ROOT/work" "$ROOT/logs"
 cp ~/.pi/agent/auth.json "$AD/"
 [ -f ~/.pi/agent/models-store.json ] && cp ~/.pi/agent/models-store.json "$AD/"
 [ -f "$AD/settings.json" ] || echo '{"defaultProvider":"deepseek","defaultModel":"deepseek-flash","packages":[]}' > "$AD/settings.json"
