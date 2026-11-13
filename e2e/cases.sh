@@ -17,12 +17,15 @@ declare -A P=(
  [E8c]="using haiku, do this in a subagent: reply with exactly 'p3'"
  [E13]="do this in a subagent using model amazon-bedrock/global.anthropic.claude-sonnet-9-9: reply 'x'"
  [E14]="do this in a subagent: run 'sleep 90' with bash, then reply 'done'. After it launches, steer it to reply 'steered' instead, check its status, then stop it, and report each state you observed."
- [E15]="delegate to a subagent: in the git repo /tmp/ppaa-e2e/work/repo append a line 'hello' to README.md. Use an isolated worktree. Do not commit."
- [E16]="do this in a subagent: the child must try to call the subagent tool to launch its own child, and report whether that tool exists and what happened."
+ [E15]="delegate to a subagent: in the git repo /tmp/ppaa-e2e/work/repo append a line 'hello' to README.md. Use an isolated worktree, and make sure the change ends up in the main working tree unstaged and uncommitted."
+ [E16]="do this in a subagent: tell the child to parallelize counting the lines of /tmp/ppaa-e2e/work/notes.txt across two of its own sub-agents, and report what it did."
  [E20b]="do this in a subagent with the builtin scout agent, async (background): count the lines of /tmp/ppaa-e2e/work/notes.txt and call estimate_cost first. Report the child's tool list."
+ [E1]="do this in a subagent: reply with exactly 'foo bar'"
+ [E21]="do this in a subagent: reply with exactly 'one'. When it completes, resume that same child with the message 'now reply with exactly two', and report both outputs and their file paths."
+ [E22]="do this in a subagent: reply with exactly 'no awt'"
  [E20]="do this in a subagent with the builtin scout agent in the foreground (async false): count the lines of /tmp/ppaa-e2e/work/notes.txt and call estimate_cost first."
 )
 ids=("$@"); [ ${#ids[@]} -eq 0 ] && ids=(E2 E3 E4 E5 E9 E10 E11 E12 E18)
 printf 'line one\nline two\nline three\n' > "$ROOT/work/notes.txt"
-for id in "${ids[@]}"; do E2E_TAIL=12 ./run.sh "$id" "${P[$id]}" > "$ROOT/logs/$id.summary" 2>&1 & done
+for id in "${ids[@]}"; do [ "$id" = E22 ] && export E2E_NO_AWT=1 || unset E2E_NO_AWT; E2E_TAIL=12 ./run.sh "$id" "${P[$id]}" > "$ROOT/logs/$id.summary" 2>&1 & done
 wait; for id in "${ids[@]}"; do echo "===== $id"; cat "$ROOT/logs/$id.summary"; done

@@ -359,3 +359,31 @@ paseo-pi-async-agents/
 3. Paseo reference. Run E17 with confirmation and settle D6.
 4. `AGENTS.md` pointer. Keep E19 as the standing regression runbook.
 5. Decide on the phase-2 plugin after E17 (section 7).
+
+## 12. Verification ledger (dev, 2026-11-13)
+
+Environment: D10 mock (`deepseek-flash` behind the three Bedrock ids), pi 1.5.0, pi-subagents 0.88.1, pcg from the local clone, isolated agent dir. Total model spend for every run below: well under $0.20.
+
+| ID | Result | Notes |
+|---|---|---|
+| unit | pass | `list` shows `general`, `general-ro`; no override load errors; `doctor` clean; installer dry run, apply, idempotent rerun, symlink safety. |
+| E1 | pass | After the fix to inline the verb table (5.1). |
+| E2, E3 | pass | Requested ids reach the children; builtin thinking levels kept (scout `low`, reviewer `high`). |
+| E4 | pass | `runs.all` script, distinct keys and files (D11). `workflow:"parallel"` rejects `output`. |
+| E5 | pass | `general-ro` has `estimate_cost`; the strict `delegate` control does not. No `grep/find/ls` (5.4). Web and MCP tools not installed in dev. |
+| E6 | pass | Children recorded in pcg history. |
+| E7, E8 | pass | No `.awt/` or `out.md` writes; `awt doctor` clean; concurrent sessions pick distinct RUN_KEYs. |
+| E9 | pass | Canary rule reached the child. |
+| E10, E11, E12 | pass | No launch; one question; "sonet" mapped to sonnet. |
+| E13 | pass | Validation error reported with closest ids, no retry. |
+| E14 | pass | steer, status, stop transitions observed. |
+| E15 | pass | Worktree edit recovered into the main tree as an unstaged patch. |
+| E16 | pass | No `subagent` tool in children; D12 guard. |
+| E18 | pass | Slash prompt authorizes and selects the model. |
+| E20 | pass | After the fix adding `subagentOnlyExtensions` (5.3). |
+| E21 | pass | Resume with a fresh RUN_KEY output (U12). |
+| E22 | pass | No `AWT_DIR`: output to `/tmp/async-agents/docs`, awt skipped. |
+| E17 | open | Needs the Bedrock machine (Paseo launches pi against the real agent dir). |
+| E19 | standing | Rerun after each pi-subagents upgrade. |
+
+Dev cannot show model-quality differences between verbs, because all three run on one model. On the Bedrock machine, rerun E1-E5, E9 and E20 without `--dev` before relying on them.

@@ -67,6 +67,7 @@ Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Ot
 - the line `RUN_KEY: <key>`
 - the output file, bound with the call's `output` field as the absolute path `<OUT>/<RUN_KEY>.out.md`. A path written only in the task text does not route output
 - when to stop and call `contact_supervisor`
+- never an instruction to delegate. If the user wants nested fan-out, run every child from this session instead; a brief cannot override the child's never-delegate rule
 - the awt rule decisions that apply (`awt list decisions --tag rule`, if any)
 
 ## 6. awt and pcg (parent side)
