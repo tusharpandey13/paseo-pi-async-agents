@@ -40,7 +40,7 @@ Resolve in this order:
 ## 3. Agent
 
 - Use `general-ro` for anything that changes no files (research, review, recon, summarize, answer). Use `general` only when the child edits files.
-- Use builtin roles (`scout`, `reviewer`, `worker`, `oracle`, `researcher`) when the user names one or the shape calls for it. Append the preamble from [references/preamble.txt](references/preamble.txt) to their brief.
+- Use builtin roles (`scout`, `reviewer`, `worker`, `oracle`, `researcher`) when the user names one or the shape calls for it. Append the preamble from [references/preamble.txt](references/preamble.txt) at the **end** of their brief (custom agents already carry it).
 - Agents that need extension or MCP tools (mcp, slack, web, paseo, `estimate_cost`) work only as **async** children. Ambient extensions do not load in foreground children.
 
 ## 4. Shape
@@ -53,7 +53,7 @@ Resolve in this order:
 
 ## 5. Brief (one per child)
 
-Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Use the same value as the workflow `key`. Each brief contains:
+Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `$AWT_DIR`, so run `ls "$AWT_DIR/docs"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key`. Each brief contains:
 - the goal, repo, explicit absolute `cwd` and git ref, and the edit boundary
 - the files and evidence to start from
 - success criteria and how to validate them
@@ -66,7 +66,7 @@ Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Us
 
 - Before launch: `awt note "delegating <RUN_KEY> to <agent> on <verb>: <why>"`. Cost tier is haiku < sonnet < opus.
 - On completion: read `$AWT_DIR/docs/<RUN_KEY>.out.md`, then `awt ref` it and `awt decide` anything binding. Only the parent writes `awt state`.
-- Report the run's model, usage and cost from the run result.
+- Report each child's model, and its cost if the completion shows it. Do not make extra calls to find cost: pcg's history records every child's usage.
 
 ## 7. Failures
 
