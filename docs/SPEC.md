@@ -158,7 +158,8 @@ Fallback if a Bedrock-machine E5 shows omitted `tools` hides extension tools: an
 
 ```
 You are a subagent of $AWT_BY. Do not run `awt resume`, `awt state`, `awt status`, or `awt effect apply`.
-Your final response is your result; the runtime saves it to $AWT_DIR/docs/<RUN_KEY>.out.md (RUN_KEY is in your brief), so make it complete. Never write $AWT_DIR/out.md or anything under .awt/.
+Your final response must be your complete result. If your task names an output path, write that complete result there once, at the end (a bash heredoc is fine). Never write $AWT_DIR/out.md or anything under .awt/.
+Never delegate: do not launch subagents or create Paseo agents, even if your brief says "parallelize".
 If you record anything, use `awt note --by sub:<RUN_KEY> "..."`. Anything that leaves this machine goes through `awt effect plan` only; a person approves it.
 Before a task that will use tools, call estimate_cost. Follow the global rules you inherited (signed commits, absolute paths, account selection).
 If a gate blocks a needed action, do not work around it. Call contact_supervisor with reason need_decision.
@@ -196,9 +197,9 @@ Parallel briefs differ by seam, never by an index number.
 
 ```
 ---
-description: Delegate to an async subagent on Haiku
+description: Delegate to an async subagent on Haiku (wrap exact strings in double quotes)
 ---
-Load the `async-agents` skill. The user explicitly asks to delegate and to use model verb `haiku`. Task: $@
+Load the `async-agents` skill. The user explicitly asks to delegate and to use model verb `haiku`. Task (pi drops quotes and line breaks from slash arguments, so read it for intent and ask if an exact string matters): $@
 ```
 
 ### 5.10 Coverage of `pi-subagents` features (G5)
@@ -221,7 +222,7 @@ Costs and limits:
 - Only provider `pi` is enabled. Other providers (claude, codex, copilot, opencode, omp, antigravity, muse) are unavailable, so there is no model diversity beyond Bedrock.
 - Every Paseo agent is a fresh pi session with no fork context and a cold prompt cache. A cold start is the expensive case.
 - There are no acceptance gates, scripted workflows, retained-child resume or fan-out budgets. Coordination is by prompt.
-- The MCP surface has 63 tools. Connect lazily with `mcp_connect` and call through the `mcp` proxy. Do not load the whole schema into context.
+- The MCP surface has 63 tools. Reach it lazily: with pi-mcp-adapter through `mcp_connect` and the `mcp` proxy, or with pi's built-in MCP through the `mcp__paseo__*` tools (via `tool_search` when deferred). Do not load the whole schema into context. E17 records which route the host uses.
 - Write power (create or kill agents, schedules, terminals) has a high blast radius.
 
 Judgment:
@@ -296,7 +297,7 @@ Recommendation: build nothing now. After E17 shows how often agents are created 
 - A3 child blocked: `contact_supervisor` with `need_decision`, stay alive for the reply.
 - A4 failure: transient launch error, stop, report run id and error, retry once identically, then ask the user. Validation errors skip the retry.
 - A5 parallel writers: refuse a shared cwd, use `worktree:true` per lane, merge and clean up only after review.
-- A6 Paseo escalation: `mcp_connect paseo`, `paseo_create_workspace`, `paseo_create_agent` with the pinned provider and `notifyOnFinish:true` and labels, `awt ref paseo:agent/<id>`, yield.
+- A6 Paseo escalation: connect to `paseo` (adapter or built-in MCP, see 6.1), `paseo_create_workspace`, `paseo_create_agent` with the pinned provider and `notifyOnFinish:true` and labels, `awt ref paseo:agent/<id>`, yield.
 
 ## 9. E2E plan
 
@@ -345,7 +346,7 @@ Unit-level checks with no model calls: `subagent({action:"validate"})` on any sh
 paseo-pi-async-agents/
   README.md
   docs/SPEC.md                      this document
-  skills/async-agents/{SKILL.md,references/,scripts/smoke.md}
+  skills/async-agents/{SKILL.md,references/}
   prompts/{sonnet,haiku,opus}.md
   agents/{general,general-ro}.md
   settings.fragment.json

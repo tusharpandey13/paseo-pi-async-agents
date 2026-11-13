@@ -55,6 +55,7 @@ fi
 python3 -I - "$APPLY" "$AD" "$REPO" "$DEV" "$PCG" <<'PY'
 import json, sys, os, time, difflib, shutil
 apply, ad, repo, dev, pcg = sys.argv[1] == "1", sys.argv[2], sys.argv[3], sys.argv[4] == "1", sys.argv[5]
+if pcg: pcg = os.path.abspath(os.path.expanduser(pcg))  # children resolve paths from their own cwd
 
 def find_pcg(settings):
     """Resolve pcg's extension file from the agent dir's packages (local paths and npm installs)."""
@@ -83,7 +84,7 @@ def resolve_fragment(frag, settings):
     for o in frag.get("subagents", {}).get("agentOverrides", {}).values():
         if path: o["subagentOnlyExtensions"] = [path if e == "{{PCG_EXTENSION}}" else e for e in o.get("subagentOnlyExtensions", [])]
         else:
-            o.pop("subagentOnlyExtensions", None)
+            o["subagentOnlyExtensions"] = False  # clears a path left by an earlier install
             o["tools"] = [t for t in o.get("tools", []) if t != "estimate_cost"]
     return frag
 

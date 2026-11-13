@@ -10,6 +10,11 @@ cp ~/.pi/agent/auth.json "$AD/"
 [ -f ~/.pi/agent/models-store.json ] && cp ~/.pi/agent/models-store.json "$AD/"
 [ -f "$AD/settings.json" ] || echo '{"defaultProvider":"deepseek","defaultModel":"deepseek-flash","packages":[]}' > "$AD/settings.json"
 cp "$REPO/e2e/fixtures/AGENTS.md" "$AD/AGENTS.md"
+R="$ROOT/work/repo"   # scratch repo for E15
+if [ ! -d "$R/.git" ]; then
+  mkdir -p "$R" && git -C "$R" init -q && echo "# scratch" > "$R/README.md" && git -C "$R" add README.md &&
+  git -C "$R" -c user.email=e2e@local -c user.name=e2e -c commit.gpgsign=false commit -qm init
+fi
 export PI_CODING_AGENT_DIR="$AD"
 grep -q 'pi-subagents' "$AD/settings.json" || pi install npm:pi-subagents@0.88.1 >/dev/null
 grep -q 'pi-governor' "$AD/settings.json" || pi install "$PCG" >/dev/null

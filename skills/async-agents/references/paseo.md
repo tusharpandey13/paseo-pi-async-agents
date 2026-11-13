@@ -6,7 +6,7 @@ Always confirm first before creating a schedule, a heartbeat, an agent that writ
 
 ## Steps (A6)
 
-1. Connect lazily with `mcp_connect` to `paseo`, then call through the `mcp` proxy. Do not load all 63 tool schemas.
+1. Reach the `paseo` MCP server the way this host exposes it: with pi-mcp-adapter, `mcp_connect` then the `mcp` proxy; with pi's built-in MCP, the `mcp__paseo__*` tools, found through `tool_search` when they are deferred. Load only the tools you call, never all 63 schemas. E17 records which route works.
 2. Optional workspace: `paseo_create_workspace` (worktree, branch, or PR checkout).
 3. Create the agent with a pinned model:
 
