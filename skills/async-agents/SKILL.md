@@ -48,7 +48,7 @@ Resolve in this order:
 - One task: a single child.
 - N independent tasks: `workflow:"parallel"`. Make the briefs differ by seam (file, area, question), never by an index number.
 - Dependent steps: a scripted workflow (`subagent({action:"guide"})`, topic workflows).
-- Code edits: one writer per cwd. Use `worktree:true` when writers run in parallel or the repo is dirty. Pass a gate: `options.gate: "<test command>"` for one command, or `options.acceptance: {level:"checked", evidence:["changed-files","commands-run"], review:{required:true}}`. In a workflow `runs.run` item, `acceptance` is a plain field.
+- Code edits: one writer per cwd. Use `worktree:true` when writers run in parallel or the repo is dirty. Managed worktrees are removed when the run ends, and uncommitted edits survive only as a patch under the run's `worktree-diffs/`. So tell a worktree writer to commit on its branch, or apply that patch yourself after review. Pass a gate: `options.gate: "<test command>"` for one command, or `options.acceptance: {level:"checked", evidence:["changed-files","commands-run"], review:{required:true}}`. In a workflow `runs.run` item, `acceptance` is a plain field.
 - Always `async:true`, then **yield**. Do not sleep, poll or call `bg_wait`. The completion notice wakes you.
 
 ## 5. Brief (one per child)
@@ -70,7 +70,7 @@ Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Ot
 
 ## 7. Failures
 
-See [references/failures.md](references/failures.md). On any launch or runtime error: stop, report the exact error and run id, and retry the identical call **once**. Never switch to `pi -p`, `pi -ne` or another CLI without approval.
+See [references/failures.md](references/failures.md). On a transient launch or runtime error: stop, report the exact error and run id, and retry the identical call **once**. A validation error (unknown model, unknown agent, bad field) is not retried: report it with the closest valid options and ask. Never switch to `pi -p`, `pi -ne` or another CLI without approval.
 
 ## 8. Control and other features
 

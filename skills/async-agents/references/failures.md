@@ -10,4 +10,6 @@
 | Child blocked by `permission-gate` or `protected-paths` | The child calls `contact_supervisor`. The parent runs the action itself or approves a narrower command. |
 | Builtin override load error "Did you mean" | Typo in `agentOverrides`; fix the key in `settings.json`. |
 | Output file missing | `output` was not passed, or was relative (relative paths land in run artifacts). Check the result's `savedOutputPath`. |
+| Validation error before launch (unknown model, agent, or field) | Do not retry. Report it with the closest valid options from the error, and ask. |
+| Worktree writer's edit missing after the run | Managed worktrees are removed at completion. Apply `worktree-diffs/step-*/task-*.patch` from the run dir, or have the writer commit on its branch. |
 | Any other launch or runtime failure | Stop, report the exact error and run id, and retry the same call once. Do not switch to `pi -p`, `pi -ne` or another CLI without approval. |

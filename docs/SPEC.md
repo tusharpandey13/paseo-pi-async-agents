@@ -185,7 +185,9 @@ Parallel briefs differ by seam, never by an index number.
 | Extension tool missing in a child | Use `general`, or add the tool to `tools` and its extension to the child's allowlist. |
 | Child lacks global rules | The agent has `inheritGlobalContext: false`, or the setting is not applied. |
 | Child blocked by `permission-gate` or `protected-paths` | The child calls `contact_supervisor`. The parent runs the action itself or approves a narrower command. |
-| Any launch or runtime failure | Stop, report the exact error and run id, retry the same call once. Do not switch to `pi -ne` or another CLI without approval. |
+| Validation error before launch (unknown model, agent or field) | No retry: report the error with its closest options and ask. E13 (dev) showed retrying a deterministic rejection is waste. |
+| Worktree writer's edit missing | Managed worktrees are removed at completion; apply the saved `worktree-diffs` patch or have the writer commit (E15). |
+| Any other launch or runtime failure | Stop, report the exact error and run id, retry the same call once. Do not switch to `pi -ne` or another CLI without approval. |
 
 ### 5.9 Prompt templates
 
@@ -291,7 +293,7 @@ Recommendation: build nothing now. After E17 shows how often agents are created 
 - A1 parent, happy path: detect trigger, resolve verb, pick agent and shape, `awt note`, `subagent` async with RUN_KEY and briefing, yield, on notice read `docs/<RUN_KEY>.out.md`, report, `awt ref`.
 - A2 child: read brief, skip awt resume, `estimate_cost`, work, write `docs/<RUN_KEY>.out.md`, final response summary.
 - A3 child blocked: `contact_supervisor` with `need_decision`, stay alive for the reply.
-- A4 failure: launch error, stop, report run id and error, retry once identically, then ask the user.
+- A4 failure: transient launch error, stop, report run id and error, retry once identically, then ask the user. Validation errors skip the retry.
 - A5 parallel writers: refuse a shared cwd, use `worktree:true` per lane, merge and clean up only after review.
 - A6 Paseo escalation: `mcp_connect paseo`, `paseo_create_workspace`, `paseo_create_agent` with the pinned provider and `notifyOnFinish:true` and labels, `awt ref paseo:agent/<id>`, yield.
 
@@ -314,9 +316,9 @@ Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the ch
 | E10 | U7 negative | No `subagent` call. |
 | E11 | U6 ambiguity | Exactly one clarifying question, no launch. |
 | E12 | Bad model word "sonet" | Skill resolves via the verb table or `models`, or asks. Never sends a bare id. |
-| E13 | Forced launch failure (invalid id) | Stop, report, one identical retry, no other CLI. |
+| E13 | Forced launch failure (invalid id) | Stop, report with closest ids, no retry (validation error), no other CLI. |
 | E14 | `steer` and `stop` a long child | State transitions observed; `resume` returns a new run id. |
-| E15 | Writer in a scratch git repo with `worktree:true` | Child edits in the worktree; main tree untouched. |
+| E15 | Writer in a scratch git repo with `worktree:true` | Child edits in the worktree; main tree untouched; the edit is recoverable (commit on the branch or saved patch). |
 | E16 | Nested spawn attempt by a child | Denied. |
 | E17 | Paseo escalation (U9) | Asks first. Creates workspace and agent with `provider: "pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5"`. `paseo_get_agent` reports that model. awt node nested under the parent. No schedule without consent. Decides D6. |
 | E18 | Slash prompts `/haiku`, `/sonnet`, `/opus` | Authorized without extra phrasing; model matches. |

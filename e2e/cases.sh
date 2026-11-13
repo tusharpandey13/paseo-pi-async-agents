@@ -11,6 +11,15 @@ declare -A P=(
  [E11]="use haiku and opus to summarize /tmp/ppaa-e2e/work/notes.txt"
  [E12]="do this in a sonet subagent: reply 'sonet ok'"
  [E18]="/haiku reply with exactly 'slash ok'"
+ [E8a]="using haiku, do this in a subagent: reply with exactly 'p1'"
+ [E8b]="using haiku, do this in a subagent: reply with exactly 'p2'"
+ [E8c]="using haiku, do this in a subagent: reply with exactly 'p3'"
+ [E13]="do this in a subagent using model amazon-bedrock/global.anthropic.claude-sonnet-9-9: reply 'x'"
+ [E14]="do this in a subagent: run 'sleep 90' with bash, then reply 'done'. After it launches, steer it to reply 'steered' instead, check its status, then stop it, and report each state you observed."
+ [E15]="delegate to a subagent: in the git repo /tmp/ppaa-e2e/work/repo append a line 'hello' to README.md. Use an isolated worktree. Do not commit."
+ [E16]="do this in a subagent: the child must try to call the subagent tool to launch its own child, and report whether that tool exists and what happened."
+ [E20b]="do this in a subagent with the builtin scout agent, async (background): count the lines of /tmp/ppaa-e2e/work/notes.txt and call estimate_cost first. Report the child's tool list."
+ [E20]="do this in a subagent with the builtin scout agent in the foreground (async false): count the lines of /tmp/ppaa-e2e/work/notes.txt and call estimate_cost first."
 )
 ids=("$@"); [ ${#ids[@]} -eq 0 ] && ids=(E2 E3 E4 E5 E9 E10 E11 E12 E18)
 printf 'line one\nline two\nline three\n' > /tmp/ppaa-e2e/work/notes.txt
