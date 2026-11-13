@@ -123,7 +123,7 @@ Resolution order:
 }
 ```
 - The allowlists are the builtin frontmatter of pi-subagents 0.88.1 plus `estimate_cost`. `tools` overrides replace the list, so E19 re-diffs them after each upgrade. `tools: "inherit"` was rejected: it gives read-only roles `edit`/`write` and drops `watchdog_diff`.
-- `estimate_cost` resolves only where pcg loads, which is in background children. A foreground launch of a patched builtin is covered by E20.
+- Each builtin override also sets `subagentOnlyExtensions: [<pcg extension file>]`. E20 (dev) showed that without it, a foreground launch of a patched builtin is rejected ("foreground child never loads the parent's ambient extensions ... unavailable: estimate_cost"). That would break every foreground use of those builtins, not only this skill's. With it, foreground and background both get `estimate_cost`, and no double-load error occurs. `install.sh` fills the path from the agent dir's packages (`package.json` name `pcg`), or from `--pcg PATH`. If pcg is absent, it drops both `estimate_cost` and the extension entry so builtins keep working.
 - `defaultModel` is a fallback only. The skill still passes `model` explicitly (D7).
 - `defaultInheritGlobalContext: true` applies to every builtin, package, user and project agent. An agent that sets `inheritGlobalContext: false` still opts out. It only has effect for agents with `inheritProjectContext: true`, which every builtin has.
 - Nesting stays off: `allowNestedSubagents` is not set, so children never spawn children.
@@ -323,7 +323,7 @@ Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the ch
 | E17 | Paseo escalation (U9) | Asks first. Creates workspace and agent with `provider: "pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5"`. `paseo_get_agent` reports that model. awt node nested under the parent. No schedule without consent. Decides D6. |
 | E18 | Slash prompts `/haiku`, `/sonnet`, `/opus` | Authorized without extra phrasing; model matches. |
 | E19 | Regression after a `pi-subagents` upgrade | Rerun E1, E5, E7, E9, and diff builtin allowlists against `settings.fragment.json`. |
-| E20 | Foreground launch of a patched builtin (`scout`, `async:false`) | Either works without `estimate_cost` or fails with a clear message; record which in `failures.md`. |
+| E20 | Foreground and background launch of a patched builtin (`scout`) | Both launch and have `estimate_cost` (needs `subagentOnlyExtensions`, 5.3). |
 
 Unit-level checks with no model calls: `subagent({action:"validate"})` on any shipped workflow file; agent frontmatter parses (`subagent({action:"list"})` shows `general` and `general-ro`); `settings.json` is valid JSON after the merge; `subagent({action:"models"})` lists all three verb ids; `install.sh` dry run prints the planned links and a settings diff.
 

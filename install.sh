@@ -3,18 +3,20 @@
 #   ./install.sh                     show planned links and settings diff
 #   ./install.sh --apply             write them (settings.json backed up first)
 #   --agent-dir DIR                  target (default: $PI_CODING_AGENT_DIR or ~/.pi/agent)
+#   --pcg PATH                       pcg extension file (default: found via settings packages)
 #   --dev                            also merge dev/models.mock.json (Bedrock ids -> deepseek-flash)
 #                                    refused for the default agent dir
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AD="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
-APPLY=0 DEV=0
+APPLY=0 DEV=0 PCG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --apply) APPLY=1 ;;
     --dev) DEV=1 ;;
     --agent-dir) AD="$2"; shift ;;
+    --pcg) PCG="$2"; shift ;;
     -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
@@ -48,9 +50,40 @@ else
 fi
 
 # JSON merges: settings.json <- settings.fragment.json ; (dev) models.json <- dev/models.mock.json
-python3 -I - "$APPLY" "$AD" "$REPO" "$DEV" <<'PY'
+python3 -I - "$APPLY" "$AD" "$REPO" "$DEV" "$PCG" <<'PY'
 import json, sys, os, time, difflib
-apply, ad, repo, dev = sys.argv[1] == "1", sys.argv[2], sys.argv[3], sys.argv[4] == "1"
+apply, ad, repo, dev, pcg = sys.argv[1] == "1", sys.argv[2], sys.argv[3], sys.argv[4] == "1", sys.argv[5]
+
+def find_pcg(settings):
+    """Resolve pcg's extension file from the agent dir's packages (local paths and npm installs)."""
+    for entry in settings.get("packages", []):
+        src = entry if isinstance(entry, str) else entry.get("source", "")
+        if src.startswith("npm:"):
+            spec = src[4:]
+            at = spec.find("@", 1)  # skip a scope's leading @
+            name = spec[:at] if at > 0 else spec
+            root = os.path.join(ad, "npm", "node_modules", name)
+        else:
+            root = os.path.normpath(os.path.join(ad, os.path.expanduser(src)))
+        try:
+            with open(os.path.join(root, "package.json")) as f: pj = json.load(f)
+        except (OSError, ValueError): continue
+        if pj.get("name") == "pcg" and pj.get("pi", {}).get("extensions"):
+            return os.path.normpath(os.path.join(root, pj["pi"]["extensions"][0]))
+    return ""
+
+def resolve_fragment(frag, settings):
+    """Fill {{PCG_EXTENSION}}; without pcg, drop it and estimate_cost so foreground builtins still launch."""
+    path = pcg or find_pcg(settings)
+    if pcg and not os.path.exists(pcg): sys.exit(f"--pcg {pcg}: not found")
+    if not path:
+        print("warn    pcg not found in packages: builtin overrides get no estimate_cost (pass --pcg PATH)")
+    for o in frag.get("subagents", {}).get("agentOverrides", {}).values():
+        if path: o["subagentOnlyExtensions"] = [path if e == "{{PCG_EXTENSION}}" else e for e in o.get("subagentOnlyExtensions", [])]
+        else:
+            o.pop("subagentOnlyExtensions", None)
+            o["tools"] = [t for t in o.get("tools", []) if t != "estimate_cost"]
+    return frag
 
 def merge(base, frag):
     """Deep-merge dicts; frag wins on leaves; lists are replaced."""
@@ -71,11 +104,12 @@ def merge_models(base, frag):
         cur["models"] = list(models.values())
     return out
 
-def do(path, frag_path, fn):
+def do(path, frag_path, fn, prep=None):
     try:
         with open(path) as f: base = json.load(f)
     except FileNotFoundError: base = {}
     with open(frag_path) as f: frag = json.load(f)
+    if prep: frag = prep(frag, base)
     new = fn(base, frag)
     a, b = json.dumps(base, indent=2).splitlines(), json.dumps(new, indent=2).splitlines()
     if a == b: print(f"ok      {path}"); return
@@ -87,7 +121,7 @@ def do(path, frag_path, fn):
             os.replace(path, f"{path}.bak.{time.strftime('%Y%m%d%H%M%S')}")
         with open(path, "w") as f: json.dump(new, f, indent=2); f.write("\n")
 
-do(os.path.join(ad, "settings.json"), os.path.join(repo, "settings.fragment.json"), merge)
+do(os.path.join(ad, "settings.json"), os.path.join(repo, "settings.fragment.json"), merge, resolve_fragment)
 if dev:
     do(os.path.join(ad, "models.json"), os.path.join(repo, "dev", "models.mock.json"), merge_models)
 PY

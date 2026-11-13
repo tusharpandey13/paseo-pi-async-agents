@@ -3,11 +3,78 @@
     "defaultModel": "amazon-bedrock/global.anthropic.claude-sonnet-5-5",
     "defaultInheritGlobalContext": true,
     "agentOverrides": {
-      "scout":      { "tools": ["read", "grep", "find", "ls", "bash", "write", "contact_supervisor", "estimate_cost"] },
-      "reviewer":   { "tools": ["read", "grep", "find", "ls", "watchdog_diff", "contact_supervisor", "estimate_cost"] },
-      "worker":     { "tools": ["read", "grep", "find", "ls", "bash", "edit", "write", "contact_supervisor", "estimate_cost"] },
-      "oracle":     { "tools": ["read", "grep", "find", "ls", "bash", "estimate_cost"] },
-      "researcher": { "tools": ["read", "write", "web_search", "fetch_content", "get_search_content", "source_check", "estimate_cost"] }
+      "scout": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "bash",
+          "write",
+          "contact_supervisor",
+          "estimate_cost"
+        ],
+        "subagentOnlyExtensions": [
+          "{{PCG_EXTENSION}}"
+        ]
+      },
+      "reviewer": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "watchdog_diff",
+          "contact_supervisor",
+          "estimate_cost"
+        ],
+        "subagentOnlyExtensions": [
+          "{{PCG_EXTENSION}}"
+        ]
+      },
+      "worker": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "bash",
+          "edit",
+          "write",
+          "contact_supervisor",
+          "estimate_cost"
+        ],
+        "subagentOnlyExtensions": [
+          "{{PCG_EXTENSION}}"
+        ]
+      },
+      "oracle": {
+        "tools": [
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "bash",
+          "estimate_cost"
+        ],
+        "subagentOnlyExtensions": [
+          "{{PCG_EXTENSION}}"
+        ]
+      },
+      "researcher": {
+        "tools": [
+          "read",
+          "write",
+          "web_search",
+          "fetch_content",
+          "get_search_content",
+          "source_check",
+          "estimate_cost"
+        ],
+        "subagentOnlyExtensions": [
+          "{{PCG_EXTENSION}}"
+        ]
+      }
     }
   }
 }
