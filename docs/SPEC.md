@@ -246,7 +246,7 @@ The tool's `provider` field is a "provider/model" pair (schema example `codex/gp
 ```
 - Thinking options per model come from `paseo_list_models` (`off`, `minimal`, `low`, `medium`, `high`, and on newer Claude models `xhigh`, `max`). Default is `medium`.
 - Same verb table as 5.1. Paseo ids carry the prefix `pi/`.
-- Derived from the tool schema and the model listing. Not yet exercised: E17 asserts the created agent reports the pinned model.
+- Derived from the tool schema and the model listing. E17 confirmed via `paseo run --provider pi/<model>`: the agent reports the pinned model. The MCP route is not yet exercised.
 - Fallback if the combined form is rejected: `provider: "pi"` plus a model field in `settings`, then set the model after creation. Record the working form in `references/paseo.md`.
 
 ## 7. Would a Paseo plugin help?
@@ -337,7 +337,7 @@ Unit-level checks with no model calls: `subagent({action:"validate"})` on any sh
 4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. It is mitigated by per-run output paths and `--by`. The clean fix is upstream: give each child its own sub-node, in the same way the awt Paseo plugin does for Paseo agents.
 5. Sonnet for everything ignores cost tiers. Auto-suggesting Haiku for pure recon is off by default because the requirement is "auto Sonnet".
 6. `thinking: medium` on `general` can be too low for review work. The caller can pass a `:high` suffix per run.
-7. Paseo model pin (6.2) is derived from schema and listing, not yet exercised.
+7. Paseo model pin (6.2) is confirmed on the CLI route (E17); the MCP route is not yet exercised.
 8. Verb ids will drift as new models ship. The SKILL.md table is the only place to update, and E19 catches stale ids.
 
 ## 11. Rollout and repository layout

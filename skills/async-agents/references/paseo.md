@@ -26,5 +26,5 @@ The awt Paseo plugin gives the agent its own awt node under the parent, so the s
 
 ## Model pin status
 
-The pin is derived from the tool schema (`provider` is a provider/model pair) and from `paseo_list_models` for `pi` (ids are `amazon-bedrock/<id>`). It has not been exercised yet; E17 settles it.
+The pin is derived from the tool schema (`provider` is a provider/model pair) and from `paseo_list_models` for `pi` (ids are `amazon-bedrock/<id>`). E17 confirmed it through the CLI: `paseo run --provider pi/amazon-bedrock/global.anthropic.claude-sonnet-5-5` creates an agent whose Model is that id (thinking defaults to medium). The MCP route uses the same provider string and is not yet exercised.
 Fallback if the combined form is rejected: `provider: "pi"` plus a model in `settings`, then set the model after creation. Record whichever form works here.
