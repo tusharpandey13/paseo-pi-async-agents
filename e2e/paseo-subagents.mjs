@@ -4,7 +4,8 @@
 // Needs the Paseo CLI client from an extracted app.asar:
 //   npx @electron/asar extract <Paseo.app>/Contents/Resources/app.asar /tmp/paseo-asar   (PASEO_ASAR_DIR overrides)
 // Exit 1 when the row count differs from --expect, or a row's description first line is over 60
-// characters or starts with RUN_KEY (the brief must open with a short title line).
+// characters or starts with RUN_KEY (the brief must open with a short title line). Exit 2: usage.
+// Exit 3: the Paseo client or daemon could not be reached (no rows were checked).
 import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
@@ -12,20 +13,25 @@ const flag = (n) => args.includes(n);
 const val = (n) => (args.includes(n) ? args[args.indexOf(n) + 1] : undefined);
 const parent = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--expect" && args[i - 1] !== "--since");
 if (!parent) {
-  console.error("usage: paseo-subagents.mjs <parentAgentId> [--expect N] [--json]");
+  console.error("usage: paseo-subagents.mjs <parentAgentId> [--expect N] [--since ISO] [--json]");
   process.exit(2);
 }
 const asar = process.env.PASEO_ASAR_DIR ?? "/tmp/paseo-asar";
 const host = process.env.PASEO_HOST ?? "localhost:6767";
-const { connectToDaemon } = await import(
-  pathToFileURL(`${asar}/node_modules/@getpaseo/cli/dist/utils/client.js`).href
-);
-const client = await connectToDaemon({ target: { kind: "endpoint", host } });
 let out;
 try {
-  out = await client.listProviderSubagents(parent);
-} finally {
-  await client.close?.();
+  const { connectToDaemon } = await import(
+    pathToFileURL(`${asar}/node_modules/@getpaseo/cli/dist/utils/client.js`).href
+  );
+  const client = await connectToDaemon({ target: { kind: "endpoint", host } });
+  try {
+    out = await client.listProviderSubagents(parent);
+  } finally {
+    await client.close?.();
+  }
+} catch (e) {
+  console.error(`cannot reach Paseo (asar ${asar}, host ${host}): ${e?.message ?? e}`);
+  process.exit(3);
 }
 const since = val("--since");
 const rows = (out.subagents ?? []).filter((r) => !since || r.createdAt >= since);

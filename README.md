@@ -41,5 +41,5 @@ e2e/inspect.sh               # child runs: agent, requested/actual model, exit, 
 Run after each `pi-subagents` upgrade and each Paseo upgrade:
 
 1. Rerun E1, E5, E7, E9 and diff the builtin allowlists (E19 in [docs/SPEC.md](docs/SPEC.md)).
-2. Launch N single `subagent` calls from one parent, then run `node e2e/paseo-subagents.mjs <parentAgentId> --expect N`. Exit 0 means N rows with labels of at most 60 characters. Exit 1 means a count mismatch or a bad label; a parent that used a workflow launch exits 1.
+2. Launch N single `subagent` calls from one parent, then run `node e2e/paseo-subagents.mjs <parentAgentId> --expect N`. Exit 0 means N rows, each with a first line of at most 60 characters that does not start with `RUN_KEY`. Exit 1 means a count mismatch or a bad label; a workflow launch lists no rows, so its parent exits 1. Exit 2 is a usage error; exit 3 means the Paseo client (`PASEO_ASAR_DIR`, default `/tmp/paseo-asar`) or daemon (`PASEO_HOST`) could not be reached, so nothing was checked.
 3. Record the Paseo and pi-subagents versions and the result in [docs/PASEO-PARITY.md](docs/PASEO-PARITY.md).
