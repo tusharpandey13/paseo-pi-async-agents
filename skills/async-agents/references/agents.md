@@ -7,12 +7,12 @@ The details live in the `pi-subagents` skill and in `subagent({action:"guide", o
 ```typescript
 // single child (U1, U3)
 subagent({ agent: "general-ro", model: "<verb id>", async: true,
-  task: "<brief>", output: "<OUT>/readme-1.out.md" })
+  task: "<title line>\nRUN_KEY: readme-1\n<brief>", output: "<OUT>/readme-1.out.md" })
 
 // N independent children (U2, U8) and per-role models (U5): N single calls in ONE reply.
 // Paseo's subagent pills track only single agent+task calls, so do not wrap them in a workflow.
-subagent({ agent: "general-ro", model: "<id>", async: true, task: "<brief: file a>", output: "<OUT>/a-1.out.md" })
-subagent({ agent: "general-ro", model: "<id>", async: true, task: "<brief: file b>", output: "<OUT>/b-1.out.md" })
+subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file a>\nRUN_KEY: a-1\n<brief>", output: "<OUT>/a-1.out.md" })
+subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file b>\nRUN_KEY: b-1\n<brief>", output: "<OUT>/b-1.out.md" })
 ```
 Workflow script (only when asked, or for loops/gates; invisible in Paseo's subagent list; not `workflow:"parallel"`, which rejects `output`):
 ```js workflow

@@ -60,11 +60,12 @@ Resolve in this order:
 
 First run `echo "$AWT_DIR"` once. Call the result `OUT`: `$AWT_DIR/docs` when it is set. When it is empty (no awt), use `/tmp/async-agents/docs` and skip every awt step below.
 
-Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key` if you do use a workflow. Each brief contains:
+Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key` if you do use a workflow. Each brief contains, in this order:
+- **line 1: a short imperative title** (at most 60 characters, no path, no key), e.g. `Map auth flow in api-js`. Paseo shows the start of the task text as the child's row label, so the title must come first.
+- line 2: `RUN_KEY: <key>`
 - the goal, repo, explicit absolute `cwd` and git ref, and the edit boundary
 - the files and evidence to start from
 - success criteria and how to validate them
-- the line `RUN_KEY: <key>`
 - the output file, bound with the call's `output` field as the absolute path `<OUT>/<RUN_KEY>.out.md`. A path written only in the task text does not route output
 - when to stop and call `contact_supervisor`
 - never an instruction to delegate. If the user wants nested fan-out, run every child from this session instead; a brief cannot override the child's never-delegate rule

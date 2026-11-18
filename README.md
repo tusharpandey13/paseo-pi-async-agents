@@ -31,3 +31,7 @@ e2e/run.sh E1 "do this in a subagent: reply foo bar"
 e2e/cases.sh                 # E2..E18 concurrently, logs in /tmp/ppaa-e2e/logs
 e2e/inspect.sh               # child runs: agent, requested/actual model, exit, acceptance, cost
 ```
+
+## Paseo row check
+
+`node e2e/paseo-subagents.mjs <parentAgentId> [--expect N] [--since ISO]` lists the subagent rows Paseo shows for a parent agent and fails on long or key-prefixed labels. It needs an extracted Paseo `app.asar` (see the header of the script).

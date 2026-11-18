@@ -34,6 +34,7 @@ These are fixed for v1.
 | D11 | Bind each child's result file with the call's `output` field (absolute path), not with an instruction in the task text. | pi-subagents only routes output through `output`. Agents with omitted `tools` (both custom agents) count as write-capable, so the runtime tells them to write the path. The preamble therefore says to write the complete result there once, at the end, and `general-ro`'s read-only rule makes that file its one exception. N independent children use a `runs.all` script, because `workflow:"parallel"` rejects `output` and generates its own keys. Without `$AWT_DIR`, output goes to `/tmp/async-agents/docs` and the awt steps are skipped. |
 | D12 | Children never delegate. The skill, the AGENTS.md pointer and the preamble all say so. | Children inherit the global AGENTS.md and skills, and have ambient `mcp:paseo`. Without the guard, a brief that repeats "parallelize" could make a child create Paseo agents with no human to confirm, which is nesting that E16 does not catch. |
 | D13 | Never launch children through a workflow script by default. N independent children are N single `subagent({agent, task, async, output})` calls in one reply. | Paseo's `pi-subagents` mapper (`providers/pi/extensions/pi-subagents/index.js`, `mapSpawn`) returns nothing unless the call has `agent` and `task` and no `action`. Workflow launches (`{workflow:true}`) get no subagent pill, so the user cannot track or open the children. Found in agent `eeb4cc6` (12 spec workers, no pills). |
+| D14 | Every brief starts with a short imperative title (at most 60 characters), `RUN_KEY` on line 2. | Paseo's subagent row shows the start of the task text as its label; the pi mapper passes the whole `task` as `description`. |
 
 ## 3. Findings that shape the design
 
@@ -410,3 +411,15 @@ Phase-2 plugin (section 7): not built. Both Paseo routes honor an explicit `prov
 ## 14. Paseo tracking finding (2026-11-18)
 
 Agent `eeb4cc6` (mcp-js-sdk, pi on Sonnet 5.5) read the skill and launched 12 spec workers through `runs.all` scripts. Paseo showed no subagent pills. Cause: the Paseo pi extension only maps single `subagent` calls that carry `agent` and `task`. E4 and the spec had steered the skill to workflows, which hide the children. Fix: D13, and 5 (Shape) and `references/agents.md` now use single calls. `/sonnet`, `/haiku`, `/opus` are pi prompt templates; `get_commands` returns them with source `prompt`, which Paseo lists as commands, not skills. The skill appears as `skill:async-agents`.
+
+## 15. Flash parity (2026-11-18)
+
+Spec: `docs/specs/FLASH.md`. Delegated drafts: `docs/specs/DELEGATE.md`, `docs/specs/FUTURE.md`.
+
+| ID | Result | Notes |
+|---|---|---|
+| P1 | pass | Two single async `general` children with titled briefs gave two rows; labels were the short titles (`e2e/paseo-subagents.mjs`). |
+| P2 | pass | A launch rejected for an unknown model id still gets a Paseo row with status `failed`. The script reports it. |
+| P3 | pass | A parent with no subagents and `--expect 1` exits 1. |
+
+The script also flags old-format briefs: the earlier `diag-1` row has the label `RUN_KEY: diag-1`.
