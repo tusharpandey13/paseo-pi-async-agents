@@ -48,8 +48,8 @@ Resolve in this order:
 ## 4. Shape
 
 - One task: a single child.
-- N independent tasks: a workflow script with `runs.all([...])`, one item per task, each with `key: "<RUN_KEY>"`, `agent`, `model`, `task` and an absolute `output` (see references/agents.md). Do not use `workflow:"parallel"`: it accepts only `agent, task, cwd, model` per task and rejects `output`. Make the briefs differ by seam (file, area, question), never by an index number.
-- Dependent steps: a scripted workflow (`subagent({action:"guide"})`, topic workflows).
+- N independent tasks: **N separate single `subagent` calls in the same reply**, each with `agent`, `model`, `async:true`, `task` and an absolute `output`. Paseo shows only single `agent`+`task` calls as subagent pills (with model and tokens); a workflow script (`runs.all`, `workflow:true`) is invisible there. The runs still execute in parallel. Make the briefs differ by seam (file, area, question), never by an index number.
+- Dependent steps: launch step 1 as a single call, yield, and launch step 2 from the completion notice, so each step is a pill. Use a scripted workflow (`subagent({action:"guide"})`, topic workflows) only when the user asks for one or the logic needs loops or gates; tell the user it will not appear in Paseo's subagent list.
 - Code edits: one writer per cwd.
   - Parallel writers need `worktree:true`, which requires a **clean** checkout. If the repo is dirty, use a single writer in the shared cwd, or ask the user to commit or stash.
   - Managed worktrees are removed when the run ends. Uncommitted edits survive only as the patch listed in the result's `artifactPaths` (`worktree-diffs/`). Tell a worktree writer to commit on its branch, or apply the patch yourself after review.
@@ -60,7 +60,7 @@ Resolve in this order:
 
 First run `echo "$AWT_DIR"` once. Call the result `OUT`: `$AWT_DIR/docs` when it is set. When it is empty (no awt), use `/tmp/async-agents/docs` and skip every awt step below.
 
-Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key`. Each brief contains:
+Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key` if you do use a workflow. Each brief contains:
 - the goal, repo, explicit absolute `cwd` and git ref, and the edit boundary
 - the files and evidence to start from
 - success criteria and how to validate them
