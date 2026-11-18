@@ -14,7 +14,9 @@ subagent({ agent: "general-ro", model: "<verb id>", async: true,
 subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file a>\nRUN_KEY: a-1\n<brief>", output: "<OUT>/a-1.out.md" })
 subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file b>\nRUN_KEY: b-1\n<brief>", output: "<OUT>/b-1.out.md" })
 ```
-Workflow script (only when asked, or for loops/gates; invisible in Paseo's subagent list; not `workflow:"parallel"`, which rejects `output`):
+Workflow guard (SKILL.md section 4): a request that names a workflow script gets a warning before any launch. Say that Paseo will not list the workflow's children, and offer N single `subagent` calls (each with `agent`, `task`, `async`, `output`). Launch the script only after the user confirms it, or when the logic needs loops or gates, and then say that no rows are expected.
+
+Workflow script (only after the guard; invisible in Paseo's subagent list; not `workflow:"parallel"`, which rejects `output`):
 ```js workflow
 const results = await runs.all([
   { key: "a-1", label: "Review file a", agent: "general-ro", model: "<id>", task: "<brief: file a>", output: "<OUT>/a-1.out.md" },
