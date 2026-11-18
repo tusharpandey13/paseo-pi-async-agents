@@ -45,7 +45,29 @@ for f in "$REPO"/agents/*.md; do link "$f" "$AD/agents/$(basename "$f")"; done
 
 # AGENTS.md pointer (appended once, marker-guarded)
 MARK='<!-- paseo-pi-async-agents -->'
-if grep -qF "$MARK" "$AD/AGENTS.md" 2>/dev/null; then echo "ok      $AD/AGENTS.md pointer"
+if grep -qF "$MARK" "$AD/AGENTS.md" 2>/dev/null; then
+  if python3 -I - "$AD/AGENTS.md" "$REPO/agents-md.fragment.md" 0 <<'PY'
+import sys
+p, frag, apply = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
+mark, want = open(frag).read().split("\n")[:2]
+lines = open(p).read().split("\n")
+i = lines.index(mark)
+if lines[i + 1] == want: sys.exit(0)
+if apply: lines[i + 1] = want; open(p, "w").write("\n".join(lines))
+sys.exit(1)
+PY
+  then echo "ok      $AD/AGENTS.md pointer"
+  else
+    say "update  $AD/AGENTS.md pointer"
+    [ "$APPLY" = 1 ] && python3 -I - "$AD/AGENTS.md" "$REPO/agents-md.fragment.md" 1 <<'PY'
+import sys
+p, frag = sys.argv[1], sys.argv[2]
+mark, want = open(frag).read().split("\n")[:2]
+lines = open(p).read().split("\n")
+i = lines.index(mark); lines[i + 1] = want
+open(p, "w").write("\n".join(lines))
+PY
+  fi
 else
   say "append  $AD/AGENTS.md pointer"
   if [ "$APPLY" = 1 ]; then mkdir -p "$AD"; { [ -s "$AD/AGENTS.md" ] && echo; cat "$REPO/agents-md.fragment.md"; } >> "$AD/AGENTS.md"; fi

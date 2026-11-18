@@ -246,7 +246,7 @@ The tool's `provider` field is a "provider/model" pair (schema example `codex/gp
 ```
 - Thinking options per model come from `paseo_list_models` (`off`, `minimal`, `low`, `medium`, `high`, and on newer Claude models `xhigh`, `max`). Default is `medium`.
 - Same verb table as 5.1. Paseo ids carry the prefix `pi/`.
-- Derived from the tool schema and the model listing. E17 confirmed via `paseo run --provider pi/<model>`: the agent reports the pinned model. The MCP route is not yet exercised.
+- Derived from the tool schema and the model listing. E17 confirmed on both routes: `paseo run --provider pi/<model>` and `paseo_create_agent` with the same `provider` string. In both, the agent reports the pinned model with thinking `medium`.
 - Fallback if the combined form is rejected: `provider: "pi"` plus a model field in `settings`, then set the model after creation. Record the working form in `references/paseo.md`.
 
 ## 7. Would a Paseo plugin help?
@@ -337,7 +337,7 @@ Unit-level checks with no model calls: `subagent({action:"validate"})` on any sh
 4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. It is mitigated by per-run output paths and `--by`. The clean fix is upstream: give each child its own sub-node, in the same way the awt Paseo plugin does for Paseo agents.
 5. Sonnet for everything ignores cost tiers. Auto-suggesting Haiku for pure recon is off by default because the requirement is "auto Sonnet".
 6. `thinking: medium` on `general` can be too low for review work. The caller can pass a `:high` suffix per run.
-7. Paseo model pin (6.2) is confirmed on the CLI route (E17); the MCP route is not yet exercised.
+7. Paseo model pin (6.2) is confirmed on the CLI and MCP routes (E17).
 8. Verb ids will drift as new models ship. The SKILL.md table is the only place to update, and E19 catches stale ids.
 
 ## 11. Rollout and repository layout
@@ -384,7 +384,24 @@ Environment: D10 mock (`deepseek-flash` behind the three Bedrock ids), pi 1.5.0,
 | E20 | pass | After the fix adding `subagentOnlyExtensions` (5.3). |
 | E21 | pass | Resume with a fresh RUN_KEY output (U12). |
 | E22 | pass | No `AWT_DIR`: output to `/tmp/async-agents/docs`, awt skipped. |
-| E17 | open | Needs the Bedrock machine (Paseo launches pi against the real agent dir). |
+| E17 | pass | CLI and MCP routes both report `amazon-bedrock/global.anthropic.claude-sonnet-5-5`, thinking `medium`. |
 | E19 | standing | Rerun after each pi-subagents upgrade. |
 
-Dev cannot show model-quality differences between verbs, because all three run on one model. On the Bedrock machine, rerun E1-E5, E9 and E20 without `--dev` before relying on them.
+## 13. Bedrock verification (2026-11-18)
+
+Environment: real agent dir, real Bedrock models, headless parent (`pi -p`) on Sonnet 5.5 via `e2e/cases.sh`, scratch awt node. Spend for the runs: under $0.50.
+
+| ID | Result | Notes |
+|---|---|---|
+| E1 | pass | `general-ro`, Sonnet 5.5, output "foo bar". |
+| E2 | pass | Child on Haiku 5.5. |
+| E3 | pass | Scout on Haiku 5.5, reviewer on Opus 5.5. |
+| E4 | pass | Three `general-ro` Sonnet children, distinct output files. |
+| E5 | pass | `general-ro` has `estimate_cost`, web and MCP tools; the strict `delegate` control lacks them. |
+| E9 | pass | Signed-commit canary reached the child. |
+| E20 | pass | Foreground `scout` launches and its transcript has `estimate_cost`. |
+| E17 (MCP) | pass | See section 10 item 7. |
+
+Finding: on the first pass, E1, E5, E9 and E20 never read the skill. The parent called the builtin `worker` synchronously with no model, so the child inherited the parent model. Cause: the `AGENTS.md` pointer said only "load the skill first", and a short trivial task skipped that step. The pointer now says to read `SKILL.md` before the first `subagent` call, even for trivial tasks, and names `general-ro`/`general`, async and an explicit model id. `install.sh` now updates an existing pointer line in place. After the change, E1, E5 and E9 used `general-ro` on Sonnet 5.5. E20 asks for `scout` explicitly, so it was not affected.
+
+Phase-2 plugin (section 7): not built. Both Paseo routes honor an explicit `provider` pin, and the skill supplies it.

@@ -1,2 +1,2 @@
 <!-- paseo-pi-async-agents -->
-Delegation (subagent, delegate, parallelize, fan out, background agent, /sonnet /haiku /opus): load the `async-agents` skill first and follow it. Subagents (`PI_SUBAGENT_CHILD=1`) never delegate.
+Delegation (subagent, delegate, parallelize, fan out, background agent, /sonnet /haiku /opus): BEFORE your first `subagent` call, even for a trivial task, read `~/.pi/agent/skills/async-agents/SKILL.md` and follow it (agent `general-ro`/`general`, async, explicit model id; never the builtin `worker`, never inherit the parent model). Subagents (`PI_SUBAGENT_CHILD=1`) never delegate.
