@@ -20,3 +20,10 @@ How Paseo builds the subagent list: a provider emits `provider_subagent` events 
 1. Our side (done): N independent children are N single calls (D13).
 2. Our side (done, D14): every brief's first line is a short imperative title, since it becomes the row's primary line. Check with `e2e/paseo-subagents.mjs`.
 3. Paseo change (upstream PR to getpaseo/paseo, `pi-subagents/index.js`): in `poll()` and `mapSpawn`, emit `subtitle` from the `status.json` step (`model`, `thinking`, `tokens.total`), use the step `sessionName` or `label` as title, and map workflow launches by following `parentWorkflowRunId` and `workflowKey` in child `status.json` files.
+
+## Row check log
+Result of `node e2e/paseo-subagents.mjs <parentAgentId> --expect N`, one line per Paseo or pi-subagents upgrade.
+
+| Date | Paseo | pi-subagents | N | Exit |
+|---|---|---|---|---|
+| 2026-11-18 | 0.16.1 | 0.88.1 | n/a | parity table checked against the live daemon; script not yet run with `--expect` |
