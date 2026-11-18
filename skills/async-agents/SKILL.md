@@ -59,15 +59,16 @@ Resolve in this order:
 
 ## 5. Brief (one per child)
 
-First run `echo "$AWT_DIR"` once. Call the result `OUT`: `$AWT_DIR/docs` when it is set. When it is empty (no awt), use `/tmp/async-agents/docs` and skip every awt step below.
+First run `echo "$AWT_DIR"` once. Call the result `OUT`: `$AWT_DIR/agents` when it is set. When it is empty (no awt), use `/tmp/async-agents/agents` (run `mkdir -p` on the child's directory) and skip every awt step below. Each child's output is `<OUT>/<RUN_KEY>/out.md`.
 
-Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick `n` so that no `<RUN_KEY>.out.md` exists yet. Use the same value as the workflow `key` if you do use a workflow. Each brief contains, in this order:
+Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick the first `n` with no `<seam>-<n>` entry there (awt makes `agents/<RUN_KEY>` as the child's node). Use the same value as the workflow `key` if you do use a workflow. Each brief contains, in this order:
 - **line 1: a short imperative title** (at most 60 characters, no path, no key), e.g. `Map auth flow in api-js`. Paseo shows the start of the task text as the child's row label, so the title must come first.
-- line 2: `RUN_KEY: <key>`
+- line 2: `RUN_KEY: <key>`, and line 3: `MODEL: <exact model id passed in the call's model field>`. awt reads both only within the first 5 lines, so keep them there. MODEL must be a plain id (letters, digits, `._:/@+-[]`, at most 200 characters, no spaces) or awt ignores it. For a builtin agent the preamble still goes at the end
 - the goal, repo, explicit absolute `cwd` and git ref, and the edit boundary
 - the files and evidence to start from
 - success criteria and how to validate them
-- the output file, bound with the call's `output` field as the absolute path `<OUT>/<RUN_KEY>.out.md`. A path written only in the task text does not route output
+- the output file, bound with the call's `output` field as the absolute path `<OUT>/<RUN_KEY>/out.md`. A path written only in the task text does not route output. A harness without hooks can run `awt init --child <RUN_KEY>` (idempotent) before launch and pass the printed `AWT_DIR` and `AWT_BY` to the child
+- for a child on the Claude provider (no pi hook): `awt-node: $AWT_DIR/agents/<RUN_KEY>` (the absolute path), and "pass `--dir <that path>` on every call of awt"; its output is `<that path>/out.md`
 - when to stop and call `contact_supervisor`
 - never an instruction to delegate. If the user wants nested fan-out, run every child from this session instead; a brief cannot override the child's never-delegate rule
 - the awt rule decisions that apply (`awt list decisions --tag rule`, if any)
@@ -75,7 +76,7 @@ Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Ot
 ## 6. awt and pcg (parent side)
 
 - Before launch: `awt note "delegating <RUN_KEY> to <agent> on <verb>: <why>"`. Cost tier is haiku < sonnet < opus.
-- On completion: read the result's `savedOutputPath` (normally `<OUT>/<RUN_KEY>.out.md`), then `awt ref` it and `awt decide` anything binding. Only the parent writes `awt state`.
+- On completion: read the result's `savedOutputPath` (normally `<OUT>/<RUN_KEY>/out.md`), then `awt ref` it and `awt decide` anything binding. Only the parent writes `awt state`.
 - Report each child's model, and its cost if the completion shows it. Do not make extra calls to find cost: pcg's history records every child's usage.
 
 ## 7. Failures
