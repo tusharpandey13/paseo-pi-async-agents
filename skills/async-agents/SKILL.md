@@ -61,7 +61,7 @@ Resolve in this order:
 
 First run `echo "$AWT_DIR"` once. Call the result `OUT`: `$AWT_DIR/agents` when it is set. When it is empty (no awt), use `/tmp/async-agents/agents` (run `mkdir -p` on the child's directory) and skip every awt step below. Each child's output is `<OUT>/<RUN_KEY>/out.md`.
 
-Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so run `ls "$OUT"` once and pick the first `n` with no `<seam>-<n>` entry there (awt makes `agents/<RUN_KEY>` as the child's node). Use the same value as the workflow `key` if you do use a workflow. Each brief contains, in this order:
+Give each child a stable `RUN_KEY` of the form `<seam>-<n>`, e.g. `readme-1`. Other sessions share `OUT`, so claim each key with an atomic `mkdir` before launching: `mkdir -p "$OUT"; n=1; until mkdir "$OUT/<seam>-$n" 2>/dev/null; do n=$((n+1)); done; echo <seam>-$n`. Use the printed key; never pick one from `ls`, because two parents can see the same free `n` (awt turns the claimed directory into the child's node). Use the same value as the workflow `key` if you do use a workflow. Each brief contains, in this order:
 - **line 1: a short imperative title** (at most 60 characters, no path, no key), e.g. `Map auth flow in api-js`. Paseo shows the start of the task text as the child's row label, so the title must come first.
 - line 2: `RUN_KEY: <key>`, and line 3: `MODEL: <exact model id passed in the call's model field>`. awt reads both only within the first 5 lines, so keep them there. MODEL must be a plain id (letters, digits, `._:/@+-[]`, at most 200 characters, no spaces) or awt ignores it. For a builtin agent the preamble still goes at the end
 - the goal, repo, explicit absolute `cwd` and git ref, and the edit boundary
