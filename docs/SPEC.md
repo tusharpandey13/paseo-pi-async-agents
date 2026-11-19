@@ -336,7 +336,7 @@ Unit-level checks with no model calls: `subagent({action:"validate"})` on any sh
 1. D2 is a decision, but the mechanism is **[verify]** in E5. The fallback allowlist is specified in 5.4.
 2. Builtin `tools` overrides replace the list. The lists are pinned to 0.88.1; an upgrade that adds a builtin tool is lost until E19 re-diffs them.
 3. D4 is a judgment call. If E7 shows `permission-gate` blocking legitimate cleanup (`rm -rf` of a temp dir), the child must ask the parent. That is acceptable friction and keeps the fail-closed property.
-4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. Addressed by awt PR #31 (child nodes; brief format in 5.5/5.6, output under `agents/<RUN_KEY>/`), pending live verification (G-4): rerun E7 and E2/E18 against the new layout. Not yet run.
+4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. Addressed by awt PR #31 (child nodes; brief format in 5.5/5.6, output under `agents/<RUN_KEY>/`), verified live on 19-Nov-2026 (G-4, section 16): E7 and E2/E18 pass against the new layout.
 5. Sonnet for everything ignores cost tiers. Auto-suggesting Haiku for pure recon is off by default because the requirement is "auto Sonnet".
 6. `thinking: medium` on `general` can be too low for review work. The caller can pass a `:high` suffix per run.
 7. Paseo model pin (6.2) is confirmed on the CLI and MCP routes (E17).
@@ -423,3 +423,15 @@ Spec: `docs/specs/FLASH.md`. Delegated drafts: `docs/specs/DELEGATE.md`, `docs/s
 | P3 | pass | A parent with no subagents and `--expect 1` exits 1. |
 
 The script also flags old-format briefs: the earlier `diag-1` row has the label `RUN_KEY: diag-1`.
+
+## 16. G-4 live verification: child node layout (2026-11-19)
+
+Environment: isolated agent dir built fresh by `e2e/setup.sh` (now also runs `awt --dir <node> init --hooks pi`, which honours `PI_CODING_AGENT_DIR` and installs `awt-context.ts` into the isolated dir), awt 0.4.0, repo at master 3ed8c1f, mocked models (all verbs route to `deepseek-flash`). Spend: under $0.05 (child runs $0.0052 by the pi-subagents meta; mocked parents are negligible).
+
+| ID | Result | Evidence |
+|---|---|---|
+| E7 | pass | `agents/e7-1/out.md` is `e7 ok`; no parent `out.md`; `awt doctor` clean (only the harmless "awt not executable" warning); `list nodes --json` shows one agent node `agents/e7-1`; parent log has no `state` event; child node rows `by:"sub:e7-1"` (recall). |
+| E2 | pass | Child `general-ro` on `haiku-5-5`, key `haiku-1`, output `agents/haiku-1/out.md` = `haiku ok`; child row `by:"sub:haiku-1"`. |
+| E18 | pass | `/haiku` slash: child on `haiku-5-5`, key `slashok-1`, output `agents/slashok-1/out.md` = `slash ok`; row `by:"sub:slashok-1"`. |
+
+Notes: E2 and E18 ran concurrently and got distinct RUN_KEYs with no overwritten output. Rows written by the awt hook at node creation carry `by:"hook"`; only child-originated rows are `sub:<RUN_KEY>`. No child wrote an explicit `note` in these runs, so the `sub:` attribution is evidenced by the `recall` row, not a note.

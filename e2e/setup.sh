@@ -19,5 +19,7 @@ export PI_CODING_AGENT_DIR="$AD"
 grep -q 'pi-subagents' "$AD/settings.json" || pi install npm:pi-subagents@0.88.1 >/dev/null
 grep -q 'pi-governor' "$AD/settings.json" || pi install "$PCG" >/dev/null
 [ -d "$NODE/.awt" ] || awt --dir "$NODE" init --goal "ppaa e2e scratch" --done "e2e ledger complete" >/dev/null
+# awt pi extension (child node switch) into the isolated dir; awt honours PI_CODING_AGENT_DIR
+awt --dir "$NODE" init --hooks pi >/dev/null
 "$REPO/install.sh" --agent-dir "$AD" --dev --apply >/dev/null
 echo "agent dir: $AD"; echo "awt node:  $NODE"
