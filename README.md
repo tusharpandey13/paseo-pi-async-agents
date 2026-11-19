@@ -29,6 +29,7 @@ It is merged only into an isolated agent dir (`install.sh --dev` refuses `~/.pi/
 e2e/setup.sh                 # /tmp/ppaa-e2e/agent: pi-subagents + pcg + this repo (--dev), fixture AGENTS.md, scratch awt node
 e2e/run.sh E1 "do this in a subagent: reply foo bar"
 e2e/cases.sh                 # E2..E18 concurrently, logs in /tmp/ppaa-e2e/logs
+e2e/chaos.sh                 # chaos suite (6 cases: 12 children, failed launch, stop/resume, huge child, workflow, 2 parents); own temp dir + own Paseo daemon; exits 1 on any FAIL
 e2e/inspect.sh               # child runs: agent, requested/actual model, exit, acceptance, cost
 ```
 

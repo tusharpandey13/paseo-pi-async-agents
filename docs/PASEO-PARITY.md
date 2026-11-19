@@ -21,9 +21,24 @@ How Paseo builds the subagent list: a provider emits `provider_subagent` events 
 2. Our side (done, D14): every brief's first line is a short imperative title, since it becomes the row's primary line. Check with `e2e/paseo-subagents.mjs`.
 3. Paseo change (upstream PR to getpaseo/paseo, `pi-subagents/index.js`): in `poll()` and `mapSpawn`, emit `subtitle` from the `status.json` step (`model`, `thinking`, `tokens.total`), use the step `sessionName` or `label` as title, and map workflow launches by following `parentWorkflowRunId` and `workflowKey` in child `status.json` files.
 
+## Row first-line truncation (issue #5)
+
+Measured 2026-11-19 on Paseo 0.16.1 with `e2e/row-width.mjs`: the app's web build (`app-dist`) served locally and driven by headless Chromium (Playwright chromium-headless-shell) against an isolated daemon. The pill dropdown row is a single `nowrap` line with `text-overflow: ellipsis`, fixed at 572 px at viewport widths 700, 1000 and 1400. It shows the whole task text with newlines turned into spaces, so a short title is followed on the same line by `RUN_KEY: ...` and `MODEL: ...` and only the start of that string is visible.
+
+| First line (chars) | Visible chars before the ellipsis | Whole first line visible |
+|---|---|---|
+| 40 | 75 (title, then `RUN_KEY: title40-1 MODEL: amazon-b`) | yes |
+| 60 | 75 (title, then `RUN_KEY: title`) | yes |
+| 80 | 74 | no, cut inside the title |
+| 100 | 75 | no |
+| 120 | 75 | no |
+
+The limit stays 60: it is the longest measured length that renders whole. The real cut-off is about 75 characters of proportional text (it moves with glyph widths) and was not narrowed between 60 and 80. The title is the only part of the brief a person sees in the row, so keep it short; `RUN_KEY` and `MODEL` usually sit beyond the cut. The skill and `e2e/paseo-subagents.mjs` both use 60.
+
 ## Row check log
 Result of `node e2e/paseo-subagents.mjs <parentAgentId> --expect N`, one line per Paseo or pi-subagents upgrade.
 
 | Date | Paseo | pi-subagents | N | Exit |
 |---|---|---|---|---|
 | 2026-11-18 | 0.16.1 | 0.88.1 | n/a | parity table checked against the live daemon; script not yet run with `--expect` |
+| 2026-11-19 | 0.16.1 | 0.88.1 | 1 to 12 | `e2e/chaos.sh`: cases 1-5 pass, case 6 fails: two concurrent parents both pick RUN_KEY dup-1 and overwrite out.md (skill bug) |
