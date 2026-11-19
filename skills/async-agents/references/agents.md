@@ -7,29 +7,29 @@ The details live in the `pi-subagents` skill and in `subagent({action:"guide", o
 ```typescript
 // single child (U1, U3)
 subagent({ agent: "general-ro", model: "<verb id>", async: true,
-  task: "<title line>\nRUN_KEY: readme-1\n<brief>", output: "<OUT>/readme-1.out.md" })
+  task: "<title line>\nRUN_KEY: readme-1\nMODEL: <id>\n<brief>", output: "<OUT>/readme-1/out.md" })
 
 // N independent children (U2, U8) and per-role models (U5): N single calls in ONE reply.
 // Paseo's subagent pills track only single agent+task calls, so do not wrap them in a workflow.
-subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file a>\nRUN_KEY: a-1\n<brief>", output: "<OUT>/a-1.out.md" })
-subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file b>\nRUN_KEY: b-1\n<brief>", output: "<OUT>/b-1.out.md" })
+subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file a>\nRUN_KEY: a-1\nMODEL: <id>\n<brief>", output: "<OUT>/a-1/out.md" })
+subagent({ agent: "general-ro", model: "<id>", async: true, task: "<title: file b>\nRUN_KEY: b-1\nMODEL: <id>\n<brief>", output: "<OUT>/b-1/out.md" })
 ```
 Workflow guard (SKILL.md section 4): a request that names a workflow script gets a warning before any launch. Say that Paseo will not list the workflow's children, and offer N single `subagent` calls (each with `agent`, `task`, `async`, `output`). Launch the script only after the user confirms it, or when the logic needs loops or gates, and then say that no rows are expected.
 
 Workflow script (only after the guard; invisible in Paseo's subagent list; not `workflow:"parallel"`, which rejects `output`):
 ```js workflow
 const results = await runs.all([
-  { key: "a-1", label: "Review file a", agent: "general-ro", model: "<id>", task: "<brief: file a>", output: "<OUT>/a-1.out.md" },
-  { key: "b-1", label: "Review file b", agent: "general-ro", model: "<id>", task: "<brief: file b>", output: "<OUT>/b-1.out.md" },
+  { key: "a-1", label: "Review file a", agent: "general-ro", model: "<id>", task: "<brief: file a>", output: "<OUT>/a-1/out.md" },
+  { key: "b-1", label: "Review file b", agent: "general-ro", model: "<id>", task: "<brief: file b>", output: "<OUT>/b-1/out.md" },
 ]);
 return results;
 ```
 Dependent steps:
 ```js workflow
 const scan = await runs.run("scan-1", { label: "Map auth flow", agent: "scout",
-  model: "amazon-bedrock/global.anthropic.claude-haiku-5-5", task: "...", output: "<OUT>/scan-1.out.md" });
+  model: "amazon-bedrock/global.anthropic.claude-haiku-5-5", task: "...", output: "<OUT>/scan-1/out.md" });
 const review = await runs.run("review-1", { label: "Review auth", agent: "reviewer",
-  model: "amazon-bedrock/global.anthropic.claude-opus-5-5", task: "... " + scan.output, output: "<OUT>/review-1.out.md" });
+  model: "amazon-bedrock/global.anthropic.claude-opus-5-5", task: "... " + scan.output, output: "<OUT>/review-1/out.md" });
 return [scan.outputReference, review.outputReference];
 ```
 Validate a script file before launch with `subagent({action:"validate", workflow:"./x.js"})`.
@@ -42,7 +42,7 @@ Validate a script file before launch with `subagent({action:"validate", workflow
 | steer a live child | `subagent({action:"steer", id, message})` |
 | pause the current turn | `subagent({action:"interrupt", id})` |
 | stop (not resumable) | `subagent({action:"stop", id})` |
-| continue a finished child | `subagent({action:"resume", id, message, output:"<OUT>/<seam>-<n+1>.out.md"})`. Pass a fresh RUN_KEY's `output`, because without it the new report lands beside the old one under another name. This returns a new run id; always resume the latest one. |
+| continue a finished child | `subagent({action:"resume", id, message, output:"<OUT>/<seam>-<n+1>/out.md"})`. Give the resumed run a fresh RUN_KEY (first unused `n`) and its `output`, so the new report does not overwrite the old one. This returns a new run id; always resume the latest one. |
 | list agents / models | `subagent({action:"list"})`, `subagent({action:"models"})` |
 | setup check | `subagent({action:"doctor"})` |
 

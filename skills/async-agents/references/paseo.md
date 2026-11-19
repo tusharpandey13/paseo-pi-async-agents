@@ -22,7 +22,7 @@ Always confirm first before creating a schedule, a heartbeat, an agent that writ
 ```
 4. `awt ref paseo:agent/<id>`, then yield.
 
-The awt Paseo plugin gives the agent its own awt node under the parent, so the subagent preamble does not apply. The agent runs `awt resume` and writes its own `out.md`.
+The awt Paseo plugin gives the agent its own awt node under the parent, so the subagent preamble does not apply. The agent runs `awt resume` and writes its own `out.md` (its own node, so no clash).
 
 ## Model pin status
 

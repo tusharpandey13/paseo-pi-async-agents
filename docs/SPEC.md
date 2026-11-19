@@ -34,7 +34,7 @@ These are fixed for v1.
 | D11 | Bind each child's result file with the call's `output` field (absolute path), not with an instruction in the task text. | pi-subagents only routes output through `output`. Agents with omitted `tools` (both custom agents) count as write-capable, so the runtime tells them to write the path. The preamble therefore says to write the complete result there once, at the end, and `general-ro`'s read-only rule makes that file its one exception. N independent children use a `runs.all` script, because `workflow:"parallel"` rejects `output` and generates its own keys. Without `$AWT_DIR`, output goes to `/tmp/async-agents/docs` and the awt steps are skipped. |
 | D12 | Children never delegate. The skill, the AGENTS.md pointer and the preamble all say so. | Children inherit the global AGENTS.md and skills, and have ambient `mcp:paseo`. Without the guard, a brief that repeats "parallelize" could make a child create Paseo agents with no human to confirm, which is nesting that E16 does not catch. |
 | D13 | Never launch children through a workflow script by default. N independent children are N single `subagent({agent, task, async, output})` calls in one reply. | Paseo's `pi-subagents` mapper (`providers/pi/extensions/pi-subagents/index.js`, `mapSpawn`) returns nothing unless the call has `agent` and `task` and no `action`. Workflow launches (`{workflow:true}`) get no subagent pill, so the user cannot track or open the children. Found in agent `eeb4cc6` (12 spec workers, no pills). |
-| D14 | Every brief starts with a short imperative title (at most 60 characters), `RUN_KEY` on line 2. | Paseo's subagent row shows the start of the task text as its label; the pi mapper passes the whole `task` as `description`. |
+| D14 | Every brief starts with a short imperative title (at most 60 characters), `RUN_KEY` on line 2, `MODEL` on line 3 (awt reads both within the first 5 lines). | Paseo's subagent row shows the start of the task text as its label; the pi mapper passes the whole `task` as `description`. |
 
 ## 3. Findings that shape the design
 
@@ -42,7 +42,7 @@ Observed by probing a read-only `delegate` child on `amazon-bedrock/global.anthr
 
 | Fact | Consequence |
 |---|---|
-| Child env contains the parent's `AWT_DIR` and `AWT_BY`, plus `PASEO_AGENT_ID`, `PI_SUBAGENT_CHILD=1`, `PI_SUBAGENT_PARENT_SESSION`. | Children share the parent's awt node. Two parallel children writing `$AWT_DIR/out.md` clobber each other and the node's handoff. Each child needs its own output path and its own `--by`. |
+| Child env contains the parent's `AWT_DIR` and `AWT_BY`, plus `PASEO_AGENT_ID`, `PI_SUBAGENT_CHILD=1`, `PI_SUBAGENT_PARENT_SESSION`. | Children share the parent's awt node. Two parallel children writing `$AWT_DIR/out.md` clobber each other and the node's handoff. awt now gives each child its own node `agents/<RUN_KEY>` (awt PR #31, hook or `awt init --child`), with `AWT_BY=sub:<RUN_KEY>` set automatically; output is `$AWT_DIR/agents/<RUN_KEY>/out.md`. |
 | `awt` is on the child's PATH. | The child can run awt, so the rules are enforced by instruction, not by absence. |
 | Child tools are `read grep find ls bash edit write contact_supervisor`. There is no `estimate_cost` and no `awt_resume`. | pcg's tool is blocked by the allowlist. |
 | The child's prompt carried the `[governor ...]` note. | pcg hooks load in background children. Only the tool is missing. |
@@ -160,23 +160,23 @@ Fallback if a Bedrock-machine E5 shows omitted `tools` hides extension tools: an
 
 ```
 You are a subagent of $AWT_BY. Do not run `awt resume`, `awt state`, `awt status`, or `awt effect apply`.
-Your final response must be your complete result. If your task names an output path, write that complete result there once, at the end (a bash heredoc is fine). Never write $AWT_DIR/out.md or anything under .awt/.
+Your final response must be your complete result. If your task names an output path, write that complete result there once, at the end (a bash heredoc is fine). Never write anything under .awt/.
 Never delegate: do not launch subagents or create Paseo agents, even if your brief says "parallelize".
-If you record anything, use `awt note --by sub:<RUN_KEY> "..."`. Anything that leaves this machine goes through `awt effect plan` only; a person approves it.
+If you record anything, use plain `awt note "..."` (your node and `--by` are already set). Anything that leaves this machine goes through `awt effect plan` only; a person approves it.
 Before a task that will use tools, call estimate_cost. Follow the global rules you inherited (signed commits, absolute paths, account selection).
 If a gate blocks a needed action, do not work around it. Call contact_supervisor with reason need_decision.
 ```
-The skill injects a stable `RUN_KEY` (for example `scan-1`) into each brief and into the workflow `key`. Separate parent sessions share `$AWT_DIR`, and E2 and E18 both chose `reply-1` and overwrote each other's file, so the skill picks the first `n` whose output file does not exist. For builtin agents the preamble goes at the end of the brief, because pcg labels history lines with the start of the task.
+The skill injects a stable `RUN_KEY` (for example `scan-1`) into each brief and into the workflow `key`. Separate parent sessions share `$AWT_DIR`, and E2 and E18 both chose `reply-1` and overwrote each other's file, so the skill picks the first `n` with no `agents/<RUN_KEY>` entry. Line 3 of a brief is `MODEL: <exact model id passed in the call's model field>` (plain id: letters, digits, `._:/@+-[]`, at most 200 characters, no spaces, else awt ignores it). Claude-provider briefs add `awt-node: $AWT_DIR/agents/<RUN_KEY>` and "pass `--dir <that path>` on every call of awt". A harness without hooks can run `awt init --child <key>` (idempotent) before launch and pass the printed `AWT_DIR` and `AWT_BY`. For builtin agents the preamble goes at the end of the brief, because pcg labels history lines with the start of the task.
 
 ### 5.6 Briefs (generated by the skill)
 
-A brief contains: goal, repo, explicit `cwd` and ref, edit boundary, files and evidence, success criteria, validation, the output path `$AWT_DIR/docs/<RUN_KEY>.out.md` (passed as the absolute `output` field, D11), when to stop and ask, and the awt `rule` decisions that apply (`awt list decisions --tag rule`).
+A brief contains: goal, repo, explicit `cwd` and ref, edit boundary, files and evidence, success criteria, validation, the output path `$AWT_DIR/agents/<RUN_KEY>/out.md` (passed as the absolute `output` field, D11), when to stop and ask, and the awt `rule` decisions that apply (`awt list decisions --tag rule`).
 Parallel briefs differ by seam, never by an index number.
 
 ### 5.7 Parent-side awt and pcg behavior
 
 - Before launch: `awt note "delegating <RUN_KEY> to <agent> on <verb>: <why>"`.
-- After completion: read `docs/<RUN_KEY>.out.md`, then `awt ref` it and `awt decide` anything binding. The parent owns `state`.
+- After completion: read `agents/<RUN_KEY>/out.md`, then `awt ref` it and `awt decide` anything binding. The parent owns `state`.
 - pcg: the parent keeps calling `estimate_cost` for its own work. The launch note records the child's model and cost tier (haiku < sonnet < opus). The completion summary reports cost when the completion shows it. The parent cannot always see child usage (dev E5), so pcg history is the record. E6 (dev) passed: each child appears in `governor-history.jsonl` with its own model and usd.
 - Pending children count as a certain wake for pcg, so the cache stays warm while they run.
 
@@ -294,8 +294,8 @@ Recommendation: build nothing now. After E17 shows how often agents are created 
 
 ### 8.2 Agent journeys
 
-- A1 parent, happy path: detect trigger, resolve verb, pick agent and shape, `awt note`, `subagent` async with RUN_KEY and briefing, yield, on notice read `docs/<RUN_KEY>.out.md`, report, `awt ref`.
-- A2 child: read brief, skip awt resume, `estimate_cost`, work, write `docs/<RUN_KEY>.out.md`, final response summary.
+- A1 parent, happy path: detect trigger, resolve verb, pick agent and shape, `awt note`, `subagent` async with RUN_KEY and briefing, yield, on notice read `agents/<RUN_KEY>/out.md`, report, `awt ref`.
+- A2 child: read brief, skip awt resume, `estimate_cost`, work, write `agents/<RUN_KEY>/out.md`, final response summary.
 - A3 child blocked: `contact_supervisor` with `need_decision`, stay alive for the reply.
 - A4 failure: transient launch error, stop, report run id and error, retry once identically, then ask the user. Validation errors skip the retry.
 - A5 parallel writers: refuse a shared cwd, use `worktree:true` per lane, merge and clean up only after review.
@@ -304,7 +304,7 @@ Recommendation: build nothing now. After E17 shows how often agents are created 
 ## 9. E2E plan
 
 Environment (D10): `e2e/setup.sh` builds `/tmp/ppaa-e2e/agent` (pi-subagents 0.88.1, pcg, this repo installed with `--dev`, fixture `AGENTS.md` carrying the canary rule "commits must be signed, `-S`") and a scratch awt node `/tmp/ppaa-e2e/awt-node`. `e2e/run.sh <ID> "<prompt>"` runs one headless parent turn on the mocked Sonnet id. All verbs route to `deepseek-flash`, so E2/E3 check the requested id, not model behavior. E17 needs Paseo to launch pi against the real agent dir, so it runs on the Bedrock machine only.
-Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the child `session.jsonl`, `$AWT_DIR/docs`, `awt doctor`, and the pcg history file.
+Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the child `session.jsonl`, `$AWT_DIR/agents`, `awt doctor`, and the pcg history file.
 
 | ID | Scenario | Pass criteria |
 |---|---|---|
@@ -314,7 +314,7 @@ Cheap first: tiny tasks. Evidence sources: `subagent({action:"status"})`, the ch
 | E4 | "parallelize" 3 tiny tasks | 3 runs, distinct keys, aggregated; no shared output file. |
 | E5 | Tool access: `general` calls `mcp({server:"paseo"})` status and `web_search`. A builtin `delegate` runs the same call as a control. | Both succeed in `general`; the control fails. Decides D2. |
 | E6 | pcg: child calls `estimate_cost` | Tool present, returns "Recorded", and a line appears in the pcg history file (D5). |
-| E7 | awt and gates: child writes `$AWT_DIR/docs/<RUN_KEY>.out.md` with ambient extensions on; no `state`, no `.awt/` edits, no `out.md` | File exists; `awt doctor` clean; node `state` unchanged; no gate blocked the write. Decides D4. |
+| E7 | awt and gates: child writes `$AWT_DIR/agents/<RUN_KEY>/out.md` with ambient extensions on; no `state`, no `.awt/` edits, no parent `out.md` | File exists; `awt doctor` clean; node `state` unchanged; no gate blocked the write. Decides D4. |
 | E8 | awt: 3 parallel children | 3 distinct out files, none overwritten, notes attributed `sub:<key>`. |
 | E9 | Global rules reach the child: ask "what must be true of commits?" | Answers "signed, `-S`". Fails without `inheritGlobalContext`. Decides D3. |
 | E10 | U7 negative | No `subagent` call. |
@@ -336,7 +336,7 @@ Unit-level checks with no model calls: `subagent({action:"validate"})` on any sh
 1. D2 is a decision, but the mechanism is **[verify]** in E5. The fallback allowlist is specified in 5.4.
 2. Builtin `tools` overrides replace the list. The lists are pinned to 0.88.1; an upgrade that adds a builtin tool is lost until E19 re-diffs them.
 3. D4 is a judgment call. If E7 shows `permission-gate` blocking legitimate cleanup (`rm -rf` of a temp dir), the child must ask the parent. That is acceptable friction and keeps the fail-closed property.
-4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. It is mitigated by per-run output paths and `--by`. The clean fix is upstream: give each child its own sub-node, in the same way the awt Paseo plugin does for Paseo agents.
+4. Shared `AWT_DIR` and `AWT_BY` is the largest awt risk. Addressed by awt PR #31 (child nodes; brief format in 5.5/5.6, output under `agents/<RUN_KEY>/`), pending live verification (G-4): rerun E7 and E2/E18 against the new layout. Not yet run.
 5. Sonnet for everything ignores cost tiers. Auto-suggesting Haiku for pure recon is off by default because the requirement is "auto Sonnet".
 6. `thinking: medium` on `general` can be too low for review work. The caller can pass a `:high` suffix per run.
 7. Paseo model pin (6.2) is confirmed on the CLI and MCP routes (E17).
