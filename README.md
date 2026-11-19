@@ -11,7 +11,7 @@ Design and E2E plan: [docs/SPEC.md](docs/SPEC.md).
 
 ## Install
 
-Requires pi with `pi-subagents` (tested with 0.88.1) and pcg.
+Requires pi with `pi-subagents` (tested with 0.88.1), pcg and, for work records, awt 0.4.0 or newer. Release notes: [CHANGELOG.md](CHANGELOG.md).
 
 ```sh
 ./install.sh                 # dry run: planned links and settings diff
